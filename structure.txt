@@ -1,0 +1,15 @@
+r_journal/
+├── app/
+│   ├── build.gradle.kts
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       ├── java/com/baverika/r_journal/
+│       │   ├── MainActivity.kt
+│       │   ├── ui/screens/ChatInputScreen.kt
+│       │   ├── data/local/... (entities, dao, db)
+│       │   └── repository/JournalRepository.kt
+│       └── res/
+│           ├── values/colors.xml
+│           ├── values/themes.xml
+│           └── values-night/themes.xml
+└── build.gradle.kts (project-level)
