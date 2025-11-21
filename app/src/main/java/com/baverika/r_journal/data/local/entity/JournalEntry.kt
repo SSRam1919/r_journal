@@ -9,8 +9,8 @@ import java.time.ZoneId
 
 @Entity(tableName = "journal_entries")
 data class JournalEntry(
-    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
-    val dateMillis: Long = 0L,
+    @PrimaryKey val dateMillis: Long = 0L, // ✅ NEW PRIMARY KEY: Stable and unique per day
+    val id: String = java.util.UUID.randomUUID().toString(), // Keep UUID for external file reference
     val messages: List<ChatMessage> = emptyList(),
     val tags: List<String> = emptyList(),
     val mood: String? = null,

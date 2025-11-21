@@ -67,21 +67,62 @@ fun QuickNotesScreen(
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             // --- Main List Content ---
             if (!isEditing) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(notes) { note ->
-                        QuickNoteItem(
-                            note = note,
-                            onDelete = { viewModel.deleteNote(it) },
-                            // Navigate to edit mode when clicked
-                            onClick = {
-                                // Set the note to edit, which will trigger the LaunchedEffect above
-                                noteToEdit = note
-                            }
+                if (notes.isEmpty()) {
+                    // Empty state
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NoteAdd,
+                            contentDescription = null,
+                            modifier = Modifier.size(120.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                         )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Text(
+                            text = "No Quick Notes Yet",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Capture quick thoughts and ideas",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Button(
+                            onClick = { navController.navigate("new_quick_note") }
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Create Note")
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(notes) { note ->
+                            QuickNoteItem(
+                                note = note,
+                                onDelete = { viewModel.deleteNote(it) },
+                                onClick = {
+                                    noteToEdit = note
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -89,17 +130,16 @@ fun QuickNotesScreen(
 
             // --- Edit Note UI (Full Screen Overlay) ---
             if (isEditing) {
-                // Use a Surface to create a distinct layer
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    tonalElevation = 8.dp // Give it a lifted appearance
+                    tonalElevation = 8.dp
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         // Top Bar for Edit Screen
                         TopAppBar(
                             title = { Text("Edit Quick Note") },
                             navigationIcon = {
-                                IconButton(onClick = { noteToEdit = null }) { // Exit edit mode
+                                IconButton(onClick = { noteToEdit = null }) {
                                     Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                                 }
                             },
@@ -107,18 +147,15 @@ fun QuickNotesScreen(
                                 // Save Button
                                 IconButton(
                                     onClick = {
-                                        // Validate and save
                                         val title = editTitle.trim()
                                         val content = editContent.trim()
                                         if (title.isNotBlank() || content.isNotBlank()) {
-                                            // Update the existing note object
                                             val updatedNote = noteToEdit!!.copy(
                                                 title = if (title.isBlank()) "Untitled" else title,
                                                 content = content
                                             )
                                             viewModel.updateNote(updatedNote)
                                         }
-                                        // Exit edit mode
                                         noteToEdit = null
                                     }
                                 ) {
@@ -150,7 +187,7 @@ fun QuickNotesScreen(
                                     .fillMaxWidth()
                                     .fillMaxHeight()
                                     .weight(1f),
-                                maxLines = 10 // Adjust as needed
+                                maxLines = 10
                             )
                         }
                     }
@@ -168,7 +205,7 @@ fun QuickNoteItem(note: QuickNote, onDelete: (QuickNote) -> Unit, onClick: () ->
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onClick() } // Make the whole item clickable
+            .clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -179,7 +216,8 @@ fun QuickNoteItem(note: QuickNote, onDelete: (QuickNote) -> Unit, onClick: () ->
                 Text(
                     text = note.title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { onDelete(note) }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete Note")
@@ -188,7 +226,9 @@ fun QuickNoteItem(note: QuickNote, onDelete: (QuickNote) -> Unit, onClick: () ->
             Text(
                 text = note.content,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp),
+                maxLines = 3,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Text(
                 text = formatTimestamp(note.timestamp),

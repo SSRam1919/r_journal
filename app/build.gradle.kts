@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.baverika.r_journal"
-        minSdk = 26
+        minSdk = 26  // Changed from 34 to 26 for wider device support
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -48,8 +48,8 @@ android {
     }
 
     composeOptions {
-        // ✅ For Kotlin 1.9.23 → use Compose Compiler 1.5.14
-        kotlinCompilerExtensionVersion = "1.5.14"
+        // For Kotlin 1.9.24 → use Compose Compiler 1.5.11
+        kotlinCompilerExtensionVersion = "1.5.11"
     }
 
     packaging {
@@ -67,8 +67,6 @@ dependencies {
     implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("io.coil-kt:coil-compose:2.4.0")
-    implementation("io.coil-kt:coil-compose:2.4.0")
-
 
     // Jetpack Compose BOM (latest stable)
     implementation(platform("androidx.compose:compose-bom:2024.10.00"))
@@ -86,11 +84,10 @@ dependencies {
 
     // Room
     implementation("androidx.room:room-runtime:2.6.1")
-    implementation(libs.androidx.ui)
     kapt("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
 
-    // Gson
+    // Gson (not needed - using JSON manually, but keeping for compatibility)
     implementation("com.google.code.gson:gson:2.10.1")
 
     // Accompanist
@@ -101,4 +98,6 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

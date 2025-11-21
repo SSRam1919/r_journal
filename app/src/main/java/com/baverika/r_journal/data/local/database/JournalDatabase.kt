@@ -7,25 +7,22 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.baverika.r_journal.data.local.converters.Converters // Make sure this import is present
+import com.baverika.r_journal.data.local.converters.Converters
 import com.baverika.r_journal.data.local.dao.JournalDao
-import com.baverika.r_journal.data.local.dao.QuickNoteDao // Make sure this import is present
+import com.baverika.r_journal.data.local.dao.QuickNoteDao
 import com.baverika.r_journal.data.local.entity.JournalEntry
-import com.baverika.r_journal.data.local.entity.QuickNote // Make sure this import is present
-
-// Define your migrations here (e.g., MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
-// ... (include the migration that creates quick_notes if necessary based on your schema history)
+import com.baverika.r_journal.data.local.entity.QuickNote
 
 @Database(
-    entities = [JournalEntry::class, QuickNote::class], // <--- Ensure QuickNote::class is included
-    version = 4, // <--- Ensure version is 4
-    exportSchema = true // Recommended
+    entities = [JournalEntry::class, QuickNote::class],
+    version = 5,
+    exportSchema = true
 )
-@TypeConverters(Converters::class) // <--- Ensure TypeConverters are applied if needed
+@TypeConverters(Converters::class)
 abstract class JournalDatabase : RoomDatabase() {
 
     abstract fun journalDao(): JournalDao
-    abstract fun quickNoteDao(): QuickNoteDao // <--- Ensure this method exists
+    abstract fun quickNoteDao(): QuickNoteDao
 
     companion object {
         @Volatile
@@ -36,13 +33,12 @@ abstract class JournalDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     JournalDatabase::class.java,
-                    "journal_db" // Ensure database name is consistent
+                    "journal_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
-                    .fallbackToDestructiveMigration()
-                    // Apply your migrations here
-                    // .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4) // Include all necessary migrations
-                    // .fallbackToDestructiveMigration() // Remove this in production, use proper migrations
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    //  Remove .fallbackToDestructiveMigration() before production release
+                    // Keep it during development for faster iteration
+                    //.fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
