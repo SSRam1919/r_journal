@@ -21,6 +21,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.baverika.r_journal.data.local.database.JournalDatabase
+import com.baverika.r_journal.data.remote.RetrofitClient
+import com.baverika.r_journal.data.remote.ServerPrefs
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
 import com.baverika.r_journal.ui.screens.*
@@ -61,6 +63,9 @@ fun MainApp(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // 🔧 state to show/hide server settings dialog
+    var showServerDialog by remember { mutableStateOf(false) }
+
     ModalNavigationDrawer(
         drawerContent = {
             ModalDrawerSheet {
@@ -88,6 +93,9 @@ fun MainApp(
                                 restoreState = true
                             }
                             scope.launch { drawerState.close() }
+                        },
+                        onServerSettingsClick = {
+                            showServerDialog = true
                         }
                     )
                 }
@@ -107,7 +115,11 @@ fun MainApp(
                 )
             }
         ) { padding ->
-            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+            ) {
                 // Navigation content
                 NavHost(
                     navController = navController,
@@ -217,7 +229,6 @@ fun MainApp(
                     }
 
                     // Image viewer screen
-                    // Image viewer screen
                     composable("image_viewer/{encodedPath}") { backStackEntry ->
                         val encodedPath = backStackEntry.arguments?.getString("encodedPath")
                         encodedPath?.let {
@@ -245,6 +256,7 @@ fun MainApp(
                         }
                     }
                 }
+
                 if (currentRoute == "archive") {
                     FloatingActionButton(
                         onClick = { navController.navigate("chat_input") },
@@ -265,12 +277,28 @@ fun MainApp(
             }
         }
     }
+
+    // 🔧 Server settings dialog, triggered from drawer
+    if (showServerDialog) {
+        ServerConfigDialog(
+            onClose = { showServerDialog = false },
+            onSave = { hostPort ->
+                val trimmed = hostPort.trim()
+                if (trimmed.isNotEmpty()) {
+                    ServerPrefs.setHostPort(context, trimmed)
+                    RetrofitClient.setHostPort(trimmed)
+                }
+                showServerDialog = false
+            }
+        )
+    }
 }
 
 @Composable
 fun DrawerContent(
     currentRoute: String?,
-    onScreenSelected: (String) -> Unit
+    onScreenSelected: (String) -> Unit,
+    onServerSettingsClick: () -> Unit
 ) {
     Column {
         DrawerItem(
@@ -312,6 +340,16 @@ fun DrawerContent(
             isSelected = currentRoute == "import",
             onClick = { onScreenSelected("import") }
         )
+
+        Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // 🔧 NEW: Server settings item
+        DrawerItem(
+            icon = Icons.Filled.Details,
+            label = "Server Details",
+            isSelected = false, // not a screen, just a dialog
+            onClick = { onServerSettingsClick() }
+        )
     }
 }
 
@@ -328,5 +366,52 @@ fun DrawerItem(
         selected = isSelected,
         onClick = onClick,
         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+    )
+}
+
+@Composable
+fun ServerConfigDialog(
+    onClose: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    val context = LocalContext.current
+    var text by remember {
+        mutableStateOf(ServerPrefs.getHostPort(context))
+    }
+
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Server address") },
+        text = {
+            Column {
+                Text(
+                    "Enter IP:port of your Flask server.\n\n" +
+                            "Examples:\n127.0.0.1:5000 (same phone)\n192.168.x.x:5000 (Wi-Fi / hotspot)",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("IP:port") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSave(text)
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onClose) {
+                Text("Cancel")
+            }
+        }
     )
 }

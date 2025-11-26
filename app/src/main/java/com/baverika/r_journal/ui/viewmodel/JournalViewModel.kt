@@ -4,6 +4,7 @@ package com.baverika.r_journal.ui.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -54,7 +55,23 @@ class JournalViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                currentEntry = repo.getOrCreateTodaysEntry()
+                // 1) get local
+                val local = repo.getOrCreateTodaysEntry()
+                currentEntry = local
+
+                Log.d("VM", "Loaded entry messages (LOCAL): " +
+                        local.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
+
+
+                // 2) merge with server (site ➜ app)
+                val merged = repo.syncTodayFromServer(local)
+                if (merged != null) {
+                    currentEntry = merged
+
+                    Log.d("VM", "Loaded entry messages (MERGED): " +
+                            merged.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
+
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -78,18 +95,17 @@ class JournalViewModel(
         }
     }
 
-    fun addMessage(content: String) {
-        if (content.isBlank()) return
-        val msg = ChatMessage(
-            role = "user",
-            content = content,
-            timestamp = System.currentTimeMillis()
-        )
-        currentEntry = currentEntry.copy(messages = currentEntry.messages + msg)
-        saveCurrentEntry()
+    // Text-only add, supports replying via optional replyTo
+    fun addMessage(content: String, replyTo: ChatMessage? = null) {
+        addMessageWithImage(content, null, replyTo)
     }
 
-    fun addMessageWithImage(content: String, imageUri: String?) {
+    // Adds a message, optionally with image and optional reply target.
+    fun addMessageWithImage(
+        content: String,
+        imageUri: String?,
+        replyTo: ChatMessage? = null    // optional reply target
+    ) {
         if (content.isBlank() && imageUri == null) return
 
         var savedImagePath: String? = null
@@ -108,7 +124,10 @@ class JournalViewModel(
             role = "user",
             content = content,
             timestamp = System.currentTimeMillis(),
-            imageUri = savedImagePath
+            imageUri = savedImagePath,
+            // reply metadata
+            replyToMessageId = replyTo?.id,
+            replyPreview = replyTo?.content?.take(80)
         )
 
         currentEntry = currentEntry.copy(messages = currentEntry.messages + msg)
@@ -174,38 +193,51 @@ class JournalViewModel(
     }
 
     fun editMessage(messageId: String, newContent: String) {
-        // Check if message belongs to today's entry
+        // Find target message
         val message = currentEntry.messages.find { it.id == messageId } ?: return
 
         // Only allow editing messages from today
         if (!isMessageFromToday(message)) return
 
         if (newContent.isBlank()) {
+            // If new content empty -> delete
             deleteMessage(messageId)
             return
         }
 
+        // Update target message content
         val updatedMessages = currentEntry.messages.map { msg ->
             if (msg.id == messageId) {
+                // replace content and timestamp
                 msg.copy(content = newContent, timestamp = System.currentTimeMillis())
             } else {
                 msg
             }
+        }.map { msg ->
+            // If any message references this edited message via replyToMessageId,
+            // update their replyPreview to reflect the new content (keep same length truncation)
+            if (msg.replyToMessageId == messageId) {
+                msg.copy(replyPreview = newContent.take(80))
+            } else {
+                msg
+            }
         }
+
         currentEntry = currentEntry.copy(messages = updatedMessages)
         saveCurrentEntry()
     }
 
     fun deleteMessage(messageId: String) {
-        // Check if message belongs to today's entry
+        // Find message
         val message = currentEntry.messages.find { it.id == messageId } ?: return
 
         // Only allow deleting messages from today
         if (!isMessageFromToday(message)) return
 
-        val updatedMessages = currentEntry.messages.filterNot { it.id == messageId }
+        // Remove the message
+        val filteredMessages = currentEntry.messages.filterNot { it.id == messageId }
 
-        // Delete associated image if exists
+        // If deleted message had image, try delete file
         message.imageUri?.let { imagePath ->
             try {
                 val imageFile = File(imagePath)
@@ -217,8 +249,23 @@ class JournalViewModel(
             }
         }
 
-        currentEntry = currentEntry.copy(messages = updatedMessages)
+        // Also clear reply references from messages that replied to this deleted message
+        val cleanedMessages = filteredMessages.map { msg ->
+            if (msg.replyToMessageId == messageId) {
+                msg.copy(replyToMessageId = null, replyPreview = null)
+            } else {
+                msg
+            }
+        }
+
+        currentEntry = currentEntry.copy(messages = cleanedMessages)
         saveCurrentEntry()
+    }
+
+    // Helper to get a message by id from currentEntry (null safe)
+    fun getMessageById(id: String?): ChatMessage? {
+        if (id == null) return null
+        return currentEntry.messages.find { it.id == id }
     }
 
     // FIXED: Helper function compatible with API 26+
@@ -282,10 +329,18 @@ class JournalViewModel(
     private fun saveCurrentEntry() {
         viewModelScope.launch {
             try {
-                repo.saveEntry(currentEntry)
+                // always sort by timestamp before saving (keeps deterministic order)
+                currentEntry = currentEntry.copy(
+                    messages = currentEntry.messages.sortedBy { it.timestamp }
+                )
+
+                repo.saveEntry(currentEntry)          // local Room
+                // inside JournalViewModel.saveCurrentEntry() just before/after repo.saveEntry(currentEntry)
+                Log.d("VM", "Saving entry messages: ${currentEntry.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" }}")
+
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Handle save error - could show snackbar
+                // optionally: show snackbar on network error
             }
         }
     }
