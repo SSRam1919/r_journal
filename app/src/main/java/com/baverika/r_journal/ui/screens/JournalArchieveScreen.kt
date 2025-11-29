@@ -1,5 +1,3 @@
-// app/src/main/java/com/baverika/r_journal/ui/screens/JournalArchiveScreen.kt
-
 package com.baverika.r_journal.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
@@ -16,49 +14,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.baverika.r_journal.data.local.entity.JournalEntry
+import com.baverika.r_journal.data.local.entity.JournalEntrySummary
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JournalArchiveScreen(
     journalRepo: com.baverika.r_journal.repository.JournalRepository,
-    onEntryClick: (JournalEntry) -> Unit
+    onEntryClick: (JournalEntrySummary) -> Unit
 ) {
-    val allEntries by journalRepo.allEntries.collectAsState(initial = emptyList())
+    // ✅ Use lightweight summaries
+    val allEntries by journalRepo.allEntrySummaries.collectAsState(initial = emptyList())
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (allEntries.isEmpty()) {
             // Empty state
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MenuBook,
-                    contentDescription = null,
-                    modifier = Modifier.size(120.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
-                    text = "Your Journal Awaits",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Start writing your first entry by tapping the + button",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            com.baverika.r_journal.ui.components.EmptyState(
+                icon = Icons.Default.MenuBook,
+                title = "Your Journal Awaits",
+                message = "Start writing your first entry by tapping the + button"
+            )
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -68,16 +43,11 @@ fun JournalArchiveScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(allEntries, key = { it.id }) { entry ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
-                        EnhancedJournalCard(
-                            entry = entry,
-                            onClick = { onEntryClick(entry) }
-                        )
-                    }
+                    // ✅ Removed AnimatedVisibility for performance
+                    EnhancedJournalCard(
+                        entry = entry,
+                        onClick = { onEntryClick(entry) }
+                    )
                 }
             }
         }
@@ -86,17 +56,20 @@ fun JournalArchiveScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EnhancedJournalCard(entry: JournalEntry, onClick: () -> Unit) {
-    val hasImages = entry.messages.any { it.imageUri != null }
-    val imageCount = entry.messages.count { it.imageUri != null }
-    val moodEmojis = entry.tags
-        .filter { it.startsWith("#mood-") }
-        .map { moodTagToEmoji(it) }
+fun EnhancedJournalCard(entry: JournalEntrySummary, onClick: () -> Unit) {
+    // ✅ Use pre-calculated fields from summary
+    val hasImages = entry.hasImages
+    val imageCount = entry.imageCount
+    val moodEmojis = entry.moodEmojis
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onClick()
+            },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -106,12 +79,12 @@ fun EnhancedJournalCard(entry: JournalEntry, onClick: () -> Unit) {
         ) {
             // Header: Date
             Text(
-                text = entry.localDate.format(DateTimeFormatter.ofPattern("EEE")),
+                text = entry.dayOfWeek,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = entry.localDate.format(DateTimeFormatter.ofPattern("MMM d")),
+                text = entry.dateFormatted,
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -131,7 +104,7 @@ fun EnhancedJournalCard(entry: JournalEntry, onClick: () -> Unit) {
             }
 
             // Preview text
-            val previewText = entry.messages.firstOrNull()?.content?.take(80)
+            val previewText = entry.previewText
             if (previewText != null) {
                 Text(
                     text = previewText,
@@ -168,7 +141,7 @@ fun EnhancedJournalCard(entry: JournalEntry, onClick: () -> Unit) {
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "${entry.messages.size}",
+                        text = "${entry.messageCount}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -195,17 +168,5 @@ fun EnhancedJournalCard(entry: JournalEntry, onClick: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-// Helper function to convert mood tag to emoji
-private fun moodTagToEmoji(tag: String): String {
-    return when (tag.removePrefix("#mood-")) {
-        "happy" -> "\uD83D\uDE0A"
-        "calm" -> "\uD83D\uDE0C"
-        "anxious" -> "\uD83D\uDE30"
-        "sad" -> "\uD83D\uDE22"
-        "tired" -> "\uD83D\uDE34"
-        else -> "😶"
     }
 }

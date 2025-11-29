@@ -1,5 +1,3 @@
-// app/src/main/java/com/baverika/r_journal/ui/theme/Theme.kt
-
 package com.baverika.r_journal.ui.theme
 
 import android.os.Build

@@ -1,5 +1,3 @@
-// app/src/main/java/com/baverika/r_journal/data/local/database/JournalDatabase.kt
-
 package com.baverika.r_journal.data.local.database
 
 import android.content.Context
@@ -16,7 +14,7 @@ import com.baverika.r_journal.data.local.entity.QuickNote
 @Database(
     entities = [JournalEntry::class, QuickNote::class],
     version = 5,
-    exportSchema = true
+    exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class JournalDatabase : RoomDatabase() {

@@ -62,18 +62,19 @@ class JournalViewModel(
                 Log.d("VM", "Loaded entry messages (LOCAL): " +
                         local.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
 
-
-                // 2) merge with server (site ➜ app)
-                val merged = repo.syncTodayFromServer(local)
-                if (merged != null) {
-                    currentEntry = merged
-
-                    Log.d("VM", "Loaded entry messages (MERGED): " +
-                            merged.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
-
-                }
             } finally {
+                // ✅ Show local data immediately, don't wait for network
                 _isLoading.value = false
+            }
+
+            // 2) merge with server (site ➜ app)
+            // This happens silently in background while user sees local data
+            val merged = repo.syncTodayFromServer(currentEntry)
+            if (merged != null) {
+                currentEntry = merged
+
+                Log.d("VM", "Loaded entry messages (MERGED): " +
+                        merged.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
             }
         }
     }

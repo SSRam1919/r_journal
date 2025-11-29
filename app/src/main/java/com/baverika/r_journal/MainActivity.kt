@@ -3,7 +3,7 @@
 package com.baverika.r_journal
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -25,6 +25,7 @@ import com.baverika.r_journal.data.remote.RetrofitClient
 import com.baverika.r_journal.data.remote.ServerPrefs
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
+import com.baverika.r_journal.repository.SettingsRepository
 import com.baverika.r_journal.ui.screens.*
 import com.baverika.r_journal.ui.theme.RJournalTheme
 import com.baverika.r_journal.ui.viewmodel.JournalViewModelFactory
@@ -32,17 +33,64 @@ import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.SearchViewModelFactory
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val db = JournalDatabase.getDatabase(this)
         val journalRepo = JournalRepository(db.journalDao())
         val quickNoteRepo = QuickNoteRepository(db.quickNoteDao())
+        val settingsRepo = SettingsRepository(this)
+
+        // Biometric Lock State
+        var isLocked by mutableStateOf(true)
+
+        // Check if biometric is available, if not, unlock immediately
+        if (!settingsRepo.isBiometricEnabled || !com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(this)) {
+            isLocked = false
+        } else {
+            // Prompt for auth
+            com.baverika.r_journal.utils.BiometricHelper.authenticate(
+                activity = this,
+                onSuccess = { isLocked = false },
+                onError = { /* Keep locked, maybe show retry button */ }
+            )
+        }
 
         setContent {
             RJournalTheme {
-                MainApp(journalRepo, quickNoteRepo)
+                if (isLocked) {
+                    // Lock Screen
+                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Locked",
+                                modifier = Modifier.size(80.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Journal Locked", style = MaterialTheme.typography.headlineMedium)
+                            Spacer(modifier = Modifier.height(32.dp))
+                            Button(onClick = {
+                                com.baverika.r_journal.utils.BiometricHelper.authenticate(
+                                    activity = this@MainActivity,
+                                    onSuccess = { isLocked = false },
+                                    onError = {}
+                                )
+                            }) {
+                                Text("Unlock")
+                            }
+                        }
+                    }
+                } else {
+                    MainApp(journalRepo, quickNoteRepo, settingsRepo)
+                }
             }
         }
     }
@@ -52,7 +100,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainApp(
     journalRepo: JournalRepository,
-    quickNoteRepo: QuickNoteRepository
+    quickNoteRepo: QuickNoteRepository,
+    settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current)
 ) {
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -65,6 +114,13 @@ fun MainApp(
 
     // 🔧 state to show/hide server settings dialog
     var showServerDialog by remember { mutableStateOf(false) }
+
+    // Define top-level routes where the drawer should be accessible via swipe
+    val topLevelRoutes = setOf(
+        "archive", "quick_notes", "search", "dashboard",
+        "calendar", "export", "import", "settings"
+    )
+    val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
     ModalNavigationDrawer(
         drawerContent = {
@@ -101,7 +157,8 @@ fun MainApp(
                 }
             }
         },
-        drawerState = drawerState
+        drawerState = drawerState,
+        gesturesEnabled = isDrawerGestureEnabled
     ) {
         Scaffold(
             topBar = {
@@ -158,6 +215,11 @@ fun MainApp(
                     // Dashboard
                     composable("dashboard") {
                         DashboardScreen(journalRepo)
+                    }
+
+                    // Calendar
+                    composable("calendar") {
+                        CalendarScreen(journalRepo, navController)
                     }
 
                     // Export
@@ -255,6 +317,14 @@ fun MainApp(
                             }
                         }
                     }
+
+                    // Settings
+                    composable("settings") {
+                        SettingsScreen(
+                            settingsRepo = settingsRepo,
+                            navController = navController
+                        )
+                    }
                 }
 
                 if (currentRoute == "archive") {
@@ -325,6 +395,19 @@ fun DrawerContent(
             isSelected = currentRoute == "dashboard",
             onClick = { onScreenSelected("dashboard") }
         )
+        DrawerItem(
+            icon = Icons.Filled.CalendarMonth,
+            label = "Calendar",
+            isSelected = currentRoute == "calendar",
+            onClick = { onScreenSelected("calendar") }
+        )
+
+        DrawerItem(
+            icon = Icons.Filled.Settings,
+            label = "Settings",
+            isSelected = currentRoute == "settings",
+            onClick = { onScreenSelected("settings") }
+        )
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -349,6 +432,17 @@ fun DrawerContent(
             label = "Server Details",
             isSelected = false, // not a screen, just a dialog
             onClick = { onServerSettingsClick() }
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Text(
+            text = "v1.1.0",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(bottom = 16.dp)
         )
     }
 }

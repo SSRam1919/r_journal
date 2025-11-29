@@ -105,79 +105,100 @@ fun CompactMoodPicker(
     canEdit: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
+    // Only show if we can edit OR if there are selected moods
+    if (canEdit || selectedMoods.isNotEmpty()) {
+        Card(
+            modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            M3Text(
-                text = "Mood:",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 4.dp)
-            )
-
-            val AVAILABLE_MOODS = listOf(
-                "happy" to "\uD83D\uDE0A",
-                "calm" to "\uD83D\uDE0C",
-                "anxious" to "\uD83D\uDE30",
-                "sad" to "\uD83D\uDE22",
-                "tired" to "\uD83D\uDE34"
-            )
-
-            AVAILABLE_MOODS.forEach { (mood, emoji) ->
-                val isSelected = mood in selectedMoods
-                val scale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.2f else 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                M3Text(
+                    text = "Mood:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 4.dp)
                 )
 
-                androidx.compose.foundation.layout.Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .scale(scale)
-                        .background(
-                            color = if (isSelected)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                Color.Transparent,
-                            shape = CircleShape
-                        )
-                        .clickable(enabled = canEdit) { onMoodToggle(mood) }
-                ) {
-                    M3Text(text = emoji, fontSize = 22.sp)
+                val AVAILABLE_MOODS = listOf(
+                    "happy" to "\uD83D\uDE0A",
+                    "calm" to "\uD83D\uDE0C",
+                    "anxious" to "\uD83D\uDE30",
+                    "sad" to "\uD83D\uDE22",
+                    "tired" to "\uD83D\uDE34"
+                )
+
+                // If editing, show all options. If not, show only selected.
+                val moodsDisplay = if (canEdit) AVAILABLE_MOODS else AVAILABLE_MOODS.filter { it.first in selectedMoods }
+
+                moodsDisplay.forEach { (mood, emoji) ->
+                    val isSelected = mood in selectedMoods
+                    val scale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.2f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "scale"
+                    )
+
+                    androidx.compose.foundation.layout.Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .scale(scale)
+                            .background(
+                                color = if (isSelected)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    Color.Transparent,
+                                shape = CircleShape
+                            )
+                            .clickable(enabled = canEdit) { onMoodToggle(mood) }
+                    ) {
+                        M3Text(text = emoji, fontSize = 22.sp)
+                    }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                if (selectedMoods.isNotEmpty() && canEdit) {
+                    M3Text(
+                        text = "${selectedMoods.size}/3",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+
+                if (!canEdit) {
+                    M3Text(
+                        text = "Past entry",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
                 }
             }
-
-            Spacer(Modifier.weight(1f))
-
-            if (selectedMoods.isNotEmpty() && canEdit) {
-                M3Text(
-                    text = "${selectedMoods.size}/3",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
-
-            if (!canEdit) {
-                M3Text(
-                    text = "Past entry",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
+        }
+    } else {
+        // Just show a small label if it's a past entry with no mood
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            M3Text(
+                text = "Past Entry • No Mood Selected",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
         }
     }
 }
@@ -509,24 +530,8 @@ fun ChatInputScreen(
                         SwipeToDismissBox(
                             state = dismissState,
                             backgroundContent = {
-                                // show icon only while the user is swiping (fraction > small threshold)
-                                val fraction = dismissState.progress
-                                if (fraction > 0.05f) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(vertical = 6.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxHeight()
-                                                .padding(start = 12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            M3Icon(imageVector = Icons.Default.Reply, contentDescription = "Reply", modifier = Modifier.size(28.dp))
-                                        }
-                                    }
-                                }
+                                // User requested no icon, just empty background
+                                Box(modifier = Modifier.fillMaxSize())
                             },
                             enableDismissFromStartToEnd = true,
                             enableDismissFromEndToStart = false,
@@ -677,10 +682,18 @@ fun ChatInputScreen(
                     Spacer(Modifier.width(8.dp))
 
                     val isEnabled = textFieldValue.text.isNotBlank() || imageUri != null
+                    
+                    val sendScale by animateFloatAsState(
+                        targetValue = if (isEnabled) 1.1f else 1.0f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "sendScale"
+                    )
+
                     IconButton(
                         onClick = {
                             val text = textFieldValue.text.trim()
                             if (text.isNotBlank() || imageUri != null) {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                 viewModel.addMessageWithImage(text, imageUri?.toString(), replyTo = replyToMessage)
                                 textFieldValue = TextFieldValue("")
                                 imageUri = null
@@ -691,6 +704,7 @@ fun ChatInputScreen(
                         enabled = isEnabled,
                         modifier = Modifier
                             .size(48.dp)
+                            .scale(sendScale)
                             .background(
                                 color = if (isEnabled) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.surfaceVariant,

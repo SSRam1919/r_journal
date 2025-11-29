@@ -13,7 +13,7 @@ android {
         minSdk = 26  // Changed from 34 to 26 for wider device support
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -45,6 +45,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -112,5 +113,5 @@ dependencies {
     implementation("androidx.compose.material:material")
 
     implementation("androidx.compose.material3:material3")
-
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
 }

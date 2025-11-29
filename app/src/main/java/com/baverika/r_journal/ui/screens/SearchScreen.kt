@@ -1,5 +1,3 @@
-// app/src/main/java/com/baverika/r_journal/ui/screens/SearchScreen.kt
-
 package com.baverika.r_journal.ui.screens
 
 import androidx.compose.foundation.clickable
@@ -47,68 +45,20 @@ fun SearchScreen(
         when {
             // No search query entered yet
             query.isBlank() -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Search Your Journals",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Find entries by keywords, moods, or tags",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                com.baverika.r_journal.ui.components.EmptyState(
+                    icon = Icons.Default.Search,
+                    title = "Search Your Journals",
+                    message = "Find entries by keywords, moods, or tags"
+                )
             }
 
             // Search performed but no results
             query.isNotBlank() && results.isEmpty() -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SearchOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "No Results Found",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Try different keywords or check your spelling",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                com.baverika.r_journal.ui.components.EmptyState(
+                    icon = Icons.Default.SearchOff,
+                    title = "No Results Found",
+                    message = "Try different keywords or check your spelling"
+                )
             }
 
             // Results found
