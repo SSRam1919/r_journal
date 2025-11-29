@@ -43,9 +43,9 @@ class JournalViewModel(
     val isCurrentEntryToday: Boolean
         get() = JournalEntry.isToday(currentEntry.dateMillis)
 
-    // Track if mood can be edited (only for today)
+    // Track if mood can be edited (Allowed for all entries now)
     val canEditMood: Boolean
-        get() = isCurrentEntryToday
+        get() = true
 
     init {
         loadTodaysEntry()
@@ -293,7 +293,8 @@ class JournalViewModel(
 
     // Support multiple mood selection with 1-3 limit
     fun toggleMood(mood: String) {
-        if (!canEditMood) return // Can't edit mood for past entries
+        // ✅ Allow editing mood for any entry
+        // if (!canEditMood) return
 
         val moodTag = "#mood-$mood"
         val currentMoodTags = currentEntry.tags.filter { it.startsWith("#mood-") }

@@ -70,7 +70,10 @@ fun SearchScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
                     items(results) { entry ->
                         SearchResultCard(
                             entry = entry,

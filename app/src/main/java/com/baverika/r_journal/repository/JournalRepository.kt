@@ -57,6 +57,61 @@ class JournalRepository(
         }
         .flowOn(Dispatchers.IO) // Do the heavy mapping on background thread
 
+    // ✅ NEW: Mood Stats Calculation
+    data class MoodStats(
+        val weeklyAverage: Float,
+        val monthlyAverage: Float
+    )
+
+    val moodStats: Flow<MoodStats> = allEntries.map { entries ->
+        val now = LocalDate.now()
+        val zoneId = ZoneId.systemDefault()
+
+        // Helper to get score from mood tag
+        fun getMoodScore(tag: String): Int {
+            return when (tag.removePrefix("#mood-")) {
+                "happy", "excited" -> 5
+                "calm" -> 4
+                "tired" -> 3
+                "anxious" -> 2
+                "sad" -> 1
+                else -> 0
+            }
+        }
+
+        // Helper to calculate average for a list of entries
+        fun calculateAverage(filteredEntries: List<JournalEntry>): Float {
+            if (filteredEntries.isEmpty()) return 0f
+
+            val dailyScores = filteredEntries.mapNotNull { entry ->
+                val moodTags = entry.tags.filter { it.startsWith("#mood-") }
+                if (moodTags.isEmpty()) return@mapNotNull null
+
+                // Average of moods for this day (Max 3)
+                val sum = moodTags.sumOf { getMoodScore(it) }
+                sum.toFloat() / moodTags.size
+            }
+
+            if (dailyScores.isEmpty()) return 0f
+            return dailyScores.average().toFloat()
+        }
+
+        val weeklyEntries = entries.filter {
+            val date = java.time.Instant.ofEpochMilli(it.dateMillis).atZone(zoneId).toLocalDate()
+            date.isAfter(now.minusDays(7))
+        }
+
+        val monthlyEntries = entries.filter {
+            val date = java.time.Instant.ofEpochMilli(it.dateMillis).atZone(zoneId).toLocalDate()
+            date.isAfter(now.minusDays(30))
+        }
+
+        MoodStats(
+            weeklyAverage = calculateAverage(weeklyEntries),
+            monthlyAverage = calculateAverage(monthlyEntries)
+        )
+    }.flowOn(Dispatchers.IO)
+
     private fun todayStartMillis(): Long =
         LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
 
