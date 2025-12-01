@@ -138,6 +138,14 @@ class JournalRepository(
         saveEntry(entry)
     }
 
+    suspend fun getOrCreateEntryForDate(dateMillis: Long): JournalEntry {
+        return journalDao.getEntryByDate(dateMillis) ?: run {
+            val newEntry = JournalEntry(dateMillis = dateMillis)
+            journalDao.insertEntry(newEntry)
+            newEntry
+        }
+    }
+
     // ---------- NEW: sync with Flask API ----------
 
     suspend fun syncTodayFromServer(local: JournalEntry?): JournalEntry? {

@@ -1,19 +1,31 @@
-// app/src/main/java/com/baverika/r_journal/ui/viewmodel/QuickNoteViewModel.kt
-
 package com.baverika.r_journal.ui.viewmodel
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.repository.QuickNoteRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 
 class QuickNoteViewModel(private val repository: QuickNoteRepository) : ViewModel() {
 
-    val allNotes = repository.allNotes
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val allNotes = _searchQuery.flatMapLatest { query ->
+        if (query.isBlank()) {
+            repository.allNotes
+        } else {
+            repository.searchNotes(query)
+        }
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
 
     fun addNote(title: String, content: String) {
         if (title.isBlank() && content.isBlank()) return

@@ -1,5 +1,3 @@
-// app/src/main/java/com/baverika/r_journal/ui/screens/QuickNotesScreen.kt
-
 package com.baverika.r_journal.ui.screens
 
 import androidx.compose.foundation.clickable
@@ -7,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,76 +51,114 @@ fun QuickNotesScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Quick Notes") }
-            )
+            if (!isEditing) {
+                TopAppBar(
+                    title = { Text("Quick Notes") }
+                )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("new_quick_note") }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Quick Note")
+            if (!isEditing) {
+                FloatingActionButton(
+                    onClick = { navController.navigate("new_quick_note") }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Quick Note")
+                }
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             // --- Main List Content ---
             if (!isEditing) {
-                if (notes.isEmpty()) {
-                    // Empty state
-                    Column(
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Search Bar
+                    val searchQuery by viewModel.searchQuery.collectAsState()
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.onSearchQueryChange(it) },
+                        placeholder = { Text("Search notes...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.NoteAdd,
-                            contentDescription = null,
-                            modifier = Modifier.size(120.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        singleLine = true,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
                         )
+                    )
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                    if (notes.isEmpty()) {
+                        if (searchQuery.isNotEmpty()) {
+                            // Empty search results
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No notes found",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            // Empty state (no notes at all)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.NoteAdd,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(120.dp),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                )
 
-                        Text(
-                            text = "No Quick Notes Yet",
-                            style = MaterialTheme.typography.headlineMedium
-                        )
+                                Spacer(modifier = Modifier.height(24.dp))
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "No Quick Notes Yet",
+                                    style = MaterialTheme.typography.headlineMedium
+                                )
 
-                        Text(
-                            text = "Capture quick thoughts and ideas",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                                Spacer(modifier = Modifier.height(8.dp))
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                                Text(
+                                    text = "Capture quick thoughts and ideas",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
 
-                        Button(
-                            onClick = { navController.navigate("new_quick_note") }
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Create Note")
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(notes) { note ->
-                            QuickNoteItem(
-                                note = note,
-                                onDelete = { viewModel.deleteNote(it) },
-                                onClick = {
-                                    noteToEdit = note
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                Button(
+                                    onClick = { navController.navigate("new_quick_note") }
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Create Note")
                                 }
-                            )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(notes) { note ->
+                                QuickNoteItem(
+                                    note = note,
+                                    onDelete = { viewModel.deleteNote(it) },
+                                    onClick = {
+                                        noteToEdit = note
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -140,7 +177,7 @@ fun QuickNotesScreen(
                             title = { Text("Edit Quick Note") },
                             navigationIcon = {
                                 IconButton(onClick = { noteToEdit = null }) {
-                                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                                 }
                             },
                             actions = {

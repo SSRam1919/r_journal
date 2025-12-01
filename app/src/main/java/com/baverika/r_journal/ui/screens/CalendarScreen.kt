@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.baverika.r_journal.repository.JournalRepository
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -105,16 +106,28 @@ fun CalendarScreen(
                     val date = currentMonth.atDay(day)
                     val entryId = entryMap[date]
                     val isToday = date == LocalDate.now()
+                    val isFuture = date.isAfter(LocalDate.now())
+
+                    // Scope for launching coroutines
+                    val scope = rememberCoroutineScope()
 
                     CalendarDay(
                         day = day,
                         isToday = isToday,
                         hasEntry = entryId != null,
+                        isFuture = isFuture,
                         onClick = {
-                            if (entryId != null) {
-                                navController.navigate("chat_input/$entryId")
-                            } else if (isToday) {
-                                navController.navigate("chat_input") // Create/Open today
+                            if (!isFuture) {
+                                if (entryId != null) {
+                                    navController.navigate("chat_input/$entryId")
+                                } else {
+                                    // Create entry for this date
+                                    scope.launch {
+                                        val dateMillis = date.atStartOfDay(java.time.ZoneId.systemDefault()).toEpochSecond() * 1000
+                                        val newEntry = journalRepo.getOrCreateEntryForDate(dateMillis)
+                                        navController.navigate("chat_input/${newEntry.id}")
+                                    }
+                                }
                             }
                         }
                     )
@@ -131,6 +144,7 @@ fun CalendarDay(
     day: Int,
     isToday: Boolean,
     hasEntry: Boolean,
+    isFuture: Boolean,
     onClick: () -> Unit
 ) {
     Box(
@@ -143,7 +157,7 @@ fun CalendarDay(
                 else if (hasEntry) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                 else Color.Transparent
             )
-            .clickable(enabled = hasEntry || isToday, onClick = onClick),
+            .clickable(enabled = !isFuture, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -151,6 +165,7 @@ fun CalendarDay(
                 text = day.toString(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isToday) MaterialTheme.colorScheme.onPrimaryContainer
+                else if (isFuture) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                 else MaterialTheme.colorScheme.onSurface
             )
             

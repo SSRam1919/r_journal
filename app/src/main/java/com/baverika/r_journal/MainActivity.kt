@@ -168,6 +168,26 @@ fun MainApp(
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Filled.Menu, contentDescription = "Menu")
                         }
+                    },
+                    actions = {
+                        if (currentRoute == "archive") {
+                            // Biometric Toggle
+                            var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
+                            
+                            IconToggleButton(
+                                checked = isBiometricEnabled,
+                                onCheckedChange = { enabled ->
+                                    isBiometricEnabled = enabled
+                                    settingsRepo.isBiometricEnabled = enabled
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (isBiometricEnabled) Icons.Default.Lock else Icons.Default.LockOpen,
+                                    contentDescription = if (isBiometricEnabled) "Biometric Lock On" else "Biometric Lock Off",
+                                    tint = if (isBiometricEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 )
             }
