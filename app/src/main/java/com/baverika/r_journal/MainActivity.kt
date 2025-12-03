@@ -58,6 +58,20 @@ class MainActivity : FragmentActivity() {
             )
         }
 
+        // Initialize Biometric
+        val biometricHelper = com.baverika.r_journal.utils.BiometricHelper
+
+        // Schedule Daily Backup
+        val backupRequest = androidx.work.PeriodicWorkRequestBuilder<com.baverika.r_journal.worker.BackupWorker>(
+            24, java.util.concurrent.TimeUnit.HOURS
+        ).build()
+
+        androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "DailyBackup",
+            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            backupRequest
+        )
+
         setContent {
             RJournalTheme {
                 if (isLocked) {
@@ -457,7 +471,7 @@ fun DrawerContent(
         Spacer(modifier = Modifier.weight(1f))
 
         Text(
-            text = "v1.1.0",
+            text = "v${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             modifier = Modifier

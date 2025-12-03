@@ -1,8 +1,35 @@
+import java.util.Properties
+import java.io.FileInputStream
+import java.io.FileOutputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     kotlin("kapt")
 }
+
+// Auto-increment Versioning Logic
+val versionPropsFile = file("version.properties")
+val versionProps = Properties()
+if (versionPropsFile.exists()) {
+    versionProps.load(FileInputStream(versionPropsFile))
+}
+
+var code = (versionProps["VERSION_CODE"] as String? ?: "1").toInt()
+var buildNum = (versionProps["BUILD_NUMBER"] as String? ?: "0").toInt()
+val versionPrefix = versionProps["VERSION_NAME_PREFIX"] as String? ?: "1.1"
+
+// Only increment on actual builds (assemble/install), not sync
+if (gradle.startParameter.taskNames.any { it.contains("assemble") || it.contains("install") }) {
+    code++
+    buildNum++
+    versionProps["VERSION_CODE"] = code.toString()
+    versionProps["BUILD_NUMBER"] = buildNum.toString()
+    versionProps.store(FileOutputStream(versionPropsFile), null)
+}
+
+val appVersionCode = code
+val appVersionName = "$versionPrefix.$buildNum"
 
 android {
     namespace = "com.baverika.r_journal"
@@ -10,10 +37,10 @@ android {
 
     defaultConfig {
         applicationId = "com.baverika.r_journal"
-        minSdk = 26  // Changed from 34 to 26 for wider device support
+        minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -114,4 +141,5 @@ dependencies {
 
     implementation("androidx.compose.material3:material3")
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }
