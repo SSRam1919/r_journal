@@ -48,12 +48,19 @@ fun CalendarScreen(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                detectHorizontalDragGestures { change, dragAmount ->
+                var totalDrag = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { totalDrag = 0f },
+                    onDragEnd = { totalDrag = 0f }
+                ) { change, dragAmount ->
                     change.consume()
-                    if (dragAmount < -50) {
+                    totalDrag += dragAmount
+                    if (totalDrag < -100) {
                         currentMonth = currentMonth.plusMonths(1)
-                    } else if (dragAmount > 50) {
+                        totalDrag = 0f
+                    } else if (totalDrag > 100) {
                         currentMonth = currentMonth.minusMonths(1)
+                        totalDrag = 0f
                     }
                 }
             }
