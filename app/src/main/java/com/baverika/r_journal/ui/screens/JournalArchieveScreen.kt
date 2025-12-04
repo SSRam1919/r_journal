@@ -1,11 +1,10 @@
 package com.baverika.r_journal.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,8 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.baverika.r_journal.data.local.entity.JournalEntrySummary
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,13 +37,11 @@ fun JournalArchiveScreen(
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
-                // Add extra bottom padding to avoid system nav bar / FAB obscuring content
                 contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(allEntries, key = { it.id }) { entry ->
-                    // ✅ Removed AnimatedVisibility for performance
                     EnhancedJournalCard(
                         entry = entry,
                         onClick = { onEntryClick(entry) }
@@ -58,7 +55,6 @@ fun JournalArchiveScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EnhancedJournalCard(entry: JournalEntrySummary, onClick: () -> Unit) {
-    // ✅ Use pre-calculated fields from summary
     val hasImages = entry.hasImages
     val imageCount = entry.imageCount
     val moodEmojis = entry.moodEmojis
@@ -71,76 +67,77 @@ fun EnhancedJournalCard(entry: JournalEntrySummary, onClick: () -> Unit) {
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                 onClick()
             },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            // Header: Date
-            Text(
-                text = entry.dayOfWeek,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = entry.dateFormatted,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            // Row 1: Day and Date (Vertical stack for grid compactness)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = entry.dayOfWeek.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+                Text(
+                    text = entry.dateFormatted, // Now includes Year
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Mood emojis
+            // Row 2: Mood
             if (moodEmojis.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
-                    moodEmojis.forEach { emoji ->
-                        Text(text = emoji, style = MaterialTheme.typography.titleMedium)
+                    moodEmojis.take(4).forEach { emoji -> // Limit emojis to prevent overflow
+                        Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
 
-            // Preview text
+            // Row 3: Preview
             val previewText = entry.previewText
-            if (previewText != null) {
-                Text(
-                    text = previewText,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Text(
-                    text = "Empty entry",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-            }
+            Text(
+                text = previewText ?: "No preview",
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                color = if (previewText != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Footer: Stats
+            // Row 4: Counts (SpaceBetween: Msg Left, Img Right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Message count
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // Message Count (Left)
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Chat,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${entry.messageCount}",
                         style = MaterialTheme.typography.labelSmall,
@@ -148,18 +145,16 @@ fun EnhancedJournalCard(entry: JournalEntrySummary, onClick: () -> Unit) {
                     )
                 }
 
-                // Image indicator
+                // Image Count (Right)
                 if (hasImages) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Image,
                             contentDescription = null,
-                            modifier = Modifier.size(14.dp),
+                            modifier = Modifier.size(12.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "$imageCount",
                             style = MaterialTheme.typography.labelSmall,

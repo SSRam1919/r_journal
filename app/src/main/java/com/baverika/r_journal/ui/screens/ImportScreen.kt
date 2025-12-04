@@ -1,11 +1,12 @@
-// app/src/main/java/com/baverika/r_journal/ui/screens/ImportScreen.kt
-
 package com.baverika.r_journal.ui.screens
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -16,8 +17,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
+import com.baverika.r_journal.utils.DbRestoreUtils
 import com.baverika.r_journal.utils.ImportUtils
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.system.exitProcess
 
 @Composable
 fun ImportScreen(
@@ -30,6 +37,14 @@ fun ImportScreen(
     var isImporting by remember { mutableStateOf(false) }
     var importSuccess by remember { mutableStateOf<Boolean?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
+    
+    // Auto-backups
+    var backups by remember { mutableStateOf<List<File>>(emptyList()) }
+    var showRestoreDialog by remember { mutableStateOf<File?>(null) }
+
+    LaunchedEffect(Unit) {
+        backups = DbRestoreUtils.getBackups(context)
+    }
 
     // Launcher for picking a ZIP file
     val pickZipLauncher = rememberLauncherForActivityResult(
@@ -52,147 +67,192 @@ fun ImportScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            when {
-                isImporting -> {
-                    // Importing state
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
+        if (isImporting) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(64.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Restoring Data...", style = MaterialTheme.typography.titleLarge)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Header
+                item {
                     Text(
-                        text = "Importing Your Data...",
-                        style = MaterialTheme.typography.titleLarge
+                        text = "Data Restoration",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "This may take a few moments",
+                        text = "Restore from a ZIP file or an automatic backup.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Please don't close the app",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.error
                     )
                 }
 
-                importSuccess == true -> {
-                    // Success state
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Import Successful!",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = importMessage ?: "Your data has been imported",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(onClick = { importSuccess = null }) {
-                        Text("Import Another File")
-                    }
-                }
-
-                importSuccess == false -> {
-                    // Error state
-                    Icon(
-                        imageVector = Icons.Default.Error,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Import Failed",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = importMessage ?: "An error occurred",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(onClick = { importSuccess = null }) {
-                        Text("Try Again")
-                    }
-                }
-
-                else -> {
-                    // Initial state
-                    Icon(
-                        imageVector = Icons.Default.Download,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Import Data",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Restore your journal entries and notes from a backup ZIP file",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
+                // Import ZIP Section
+                item {
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                text = "Warning: Importing will merge with existing data. Duplicate entries may occur.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface
+                                text = "Import from ZIP",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Select a previously exported ZIP file to merge with current data.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { pickZipLauncher.launch(arrayOf("application/zip")) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.FolderOpen, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Select ZIP File")
+                            }
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                // Auto-Backups Section
+                item {
+                    Text(
+                        text = "Automatic Backups",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
 
-                    Button(
-                        onClick = {
-                            pickZipLauncher.launch(arrayOf("application/zip"))
-                        }
-                    ) {
-                        Icon(Icons.Default.FolderOpen, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Select ZIP File to Import")
+                if (backups.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No automatic backups found.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    items(backups) { file ->
+                        BackupItem(file = file, onClick = { showRestoreDialog = file })
                     }
                 }
             }
         }
+
+        // Restore Confirmation Dialog
+        if (showRestoreDialog != null) {
+            AlertDialog(
+                onDismissRequest = { showRestoreDialog = null },
+                title = { Text("Restore Backup?") },
+                text = {
+                    Text("This will overwrite your current data with the backup from:\n\n${formatDate(showRestoreDialog!!.lastModified())}\n\nThe app will restart immediately after restoration.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val fileToRestore = showRestoreDialog!!
+                            showRestoreDialog = null
+                            isImporting = true
+                            
+                            // Perform restore
+                            val success = DbRestoreUtils.restoreBackup(context, fileToRestore)
+                            
+                            if (success) {
+                                // Restart App
+                                val packageManager = context.packageManager
+                                val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+                                val componentName = intent?.component
+                                val mainIntent = android.content.Intent.makeRestartActivityTask(componentName)
+                                context.startActivity(mainIntent)
+                                Runtime.getRuntime().exit(0)
+                            } else {
+                                isImporting = false
+                                importSuccess = false
+                                importMessage = "Failed to restore database file."
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Restore & Restart")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRestoreDialog = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        
+        // Success/Error Dialogs (from ZIP import)
+        if (importSuccess != null) {
+            AlertDialog(
+                onDismissRequest = { importSuccess = null },
+                title = { Text(if (importSuccess == true) "Success" else "Error") },
+                text = { Text(importMessage ?: "") },
+                confirmButton = {
+                    TextButton(onClick = { importSuccess = null }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun BackupItem(file: File, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Restore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = formatDate(file.lastModified()),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "${file.length() / 1024} KB",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+private fun formatDate(timestamp: Long): String {
+    return SimpleDateFormat("MMM d, yyyy  h:mm a", Locale.getDefault()).format(Date(timestamp))
 }

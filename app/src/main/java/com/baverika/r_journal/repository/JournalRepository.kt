@@ -51,7 +51,7 @@ class JournalRepository(
                     dayOfWeek = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(entry.dateMillis), ZoneId.systemDefault())
                         .format(java.time.format.DateTimeFormatter.ofPattern("EEE")),
                     dateFormatted = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(entry.dateMillis), ZoneId.systemDefault())
-                        .format(java.time.format.DateTimeFormatter.ofPattern("MMM d"))
+                        .format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy"))
                 )
             }
         }

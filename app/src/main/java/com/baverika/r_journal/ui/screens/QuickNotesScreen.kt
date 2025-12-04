@@ -30,6 +30,7 @@ fun QuickNotesScreen(
 
     // State to hold the note currently being edited
     var noteToEdit by remember { mutableStateOf<QuickNote?>(null) }
+    var noteToDelete by remember { mutableStateOf<QuickNote?>(null) }
     // State for the edit screen's text fields
     var editTitle by remember { mutableStateOf("") }
     var editContent by remember { mutableStateOf("") }
@@ -153,7 +154,7 @@ fun QuickNotesScreen(
                             items(notes) { note ->
                                 QuickNoteItem(
                                     note = note,
-                                    onDelete = { viewModel.deleteNote(it) },
+                                    onDelete = { noteToDelete = it },
                                     onClick = {
                                         noteToEdit = note
                                     }
@@ -231,6 +232,29 @@ fun QuickNotesScreen(
                 }
             }
             // --- End Edit Note UI ---
+
+            if (noteToDelete != null) {
+                AlertDialog(
+                    onDismissRequest = { noteToDelete = null },
+                    title = { Text("Delete Note") },
+                    text = { Text("Are you sure you want to delete this note?") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                noteToDelete?.let { viewModel.deleteNote(it) }
+                                noteToDelete = null
+                            }
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { noteToDelete = null }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
         }
     }
 }

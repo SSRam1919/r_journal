@@ -23,11 +23,13 @@ import androidx.navigation.compose.rememberNavController
 import com.baverika.r_journal.data.local.database.JournalDatabase
 import com.baverika.r_journal.data.remote.RetrofitClient
 import com.baverika.r_journal.data.remote.ServerPrefs
+import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
 import com.baverika.r_journal.repository.SettingsRepository
 import com.baverika.r_journal.ui.screens.*
 import com.baverika.r_journal.ui.theme.RJournalTheme
+import com.baverika.r_journal.ui.viewmodel.EventViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.JournalViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.SearchViewModelFactory
@@ -41,6 +43,7 @@ class MainActivity : FragmentActivity() {
         val db = JournalDatabase.getDatabase(this)
         val journalRepo = JournalRepository(db.journalDao())
         val quickNoteRepo = QuickNoteRepository(db.quickNoteDao())
+        val eventRepo = EventRepository(db.eventDao())
         val settingsRepo = SettingsRepository(this)
 
         // Biometric Lock State
@@ -103,7 +106,7 @@ class MainActivity : FragmentActivity() {
                         }
                     }
                 } else {
-                    MainApp(journalRepo, quickNoteRepo, settingsRepo)
+                    MainApp(journalRepo, quickNoteRepo, eventRepo, settingsRepo)
                 }
             }
         }
@@ -115,6 +118,7 @@ class MainActivity : FragmentActivity() {
 fun MainApp(
     journalRepo: JournalRepository,
     quickNoteRepo: QuickNoteRepository,
+    eventRepo: EventRepository,
     settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current)
 ) {
     val context = LocalContext.current
@@ -132,7 +136,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
-        "calendar", "export", "import", "settings"
+        "calendar", "events", "export", "import", "settings"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -254,6 +258,16 @@ fun MainApp(
                     // Calendar
                     composable("calendar") {
                         CalendarScreen(journalRepo, navController)
+                    }
+
+                    // Events (Special Dates)
+                    composable("events") {
+                        EventsScreen(
+                            viewModel = viewModel(
+                                factory = EventViewModelFactory(eventRepo)
+                            ),
+                            navController = navController
+                        )
                     }
 
                     // Export
@@ -437,25 +451,17 @@ fun DrawerContent(
         )
 
         DrawerItem(
+            icon = Icons.Filled.Event,
+            label = "Special Dates",
+            isSelected = currentRoute == "events",
+            onClick = { onScreenSelected("events") }
+        )
+
+        DrawerItem(
             icon = Icons.Filled.Settings,
             label = "Settings",
             isSelected = currentRoute == "settings",
             onClick = { onScreenSelected("settings") }
-        )
-
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-        DrawerItem(
-            icon = Icons.Filled.Upload,
-            label = "Export Data",
-            isSelected = currentRoute == "export",
-            onClick = { onScreenSelected("export") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.Download,
-            label = "Import Data",
-            isSelected = currentRoute == "import",
-            onClick = { onScreenSelected("import") }
         )
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))

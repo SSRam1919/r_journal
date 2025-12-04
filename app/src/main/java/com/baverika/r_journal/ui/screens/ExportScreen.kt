@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
 import com.baverika.r_journal.utils.ExportUtils
+import com.baverika.r_journal.utils.PdfExportUtils
 import kotlinx.coroutines.launch
 
 @Composable
@@ -133,7 +135,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Create a backup of all your journal entries and notes",
+                        text = "Create a backup or generate a PDF book",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -173,6 +175,7 @@ fun ExportScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
+                    // ZIP Export Button
                     Button(
                         onClick = {
                             isExporting = true
@@ -182,11 +185,32 @@ fun ExportScreen(
                                 exportSuccess = success
                                 exportMessage = message
                             }
-                        }
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Upload, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Export All Data (ZIP)")
+                        Text("Export Backup (ZIP)")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // PDF Export Button
+                    OutlinedButton(
+                        onClick = {
+                            isExporting = true
+                            scope.launch {
+                                val (success, message) = PdfExportUtils.exportToPdf(context, journals, notes)
+                                isExporting = false
+                                exportSuccess = success
+                                exportMessage = message
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.MenuBook, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Export as PDF Book")
                     }
                 }
             }

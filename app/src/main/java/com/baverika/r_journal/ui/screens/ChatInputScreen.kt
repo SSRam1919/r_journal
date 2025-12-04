@@ -363,15 +363,16 @@ fun ChatInputScreen(
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     val listState = rememberLazyListState()
     val context = LocalContext.current
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
-    val hasUnsavedText = textFieldValue.text.trim().isNotEmpty() || imageUri != null
+    val hasUnsavedText = textFieldValue.text.trim().isNotEmpty() || selectedImageUris.isNotEmpty()
 
     var showExitConfirmation by remember { mutableStateOf(false) }
     var messageActionMenuForId by remember { mutableStateOf<String?>(null) }
     var editTextValue by remember { mutableStateOf("") }
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showOptionsDialog by remember { mutableStateOf(false) }
 
     var showMediaPicker by remember { mutableStateOf(false) }
     var tempImageFile by remember { mutableStateOf<File?>(null) }
@@ -396,7 +397,7 @@ fun ChatInputScreen(
                 "${context.packageName}.fileprovider",
                 tempImageFile!!
             )
-            imageUri = photoURI
+            selectedImageUris = selectedImageUris + photoURI
         } else {
             tempImageFile = null
         }
@@ -416,8 +417,10 @@ fun ChatInputScreen(
         }
     }
 
-    val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { imageUri = it }
+    val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            selectedImageUris = selectedImageUris + uris
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -527,12 +530,12 @@ fun ChatInputScreen(
 
                         val replied = entry.messages.find { it.id == message.replyToMessageId }
 
+
+
+    // ... (inside LazyColumn items)
                         SwipeToDismissBox(
                             state = dismissState,
-                            backgroundContent = {
-                                // User requested no icon, just empty background
-                                Box(modifier = Modifier.fillMaxSize())
-                            },
+                            backgroundContent = { Box(modifier = Modifier.fillMaxSize()) },
                             enableDismissFromStartToEnd = true,
                             enableDismissFromEndToStart = false,
                             content = {
@@ -544,6 +547,7 @@ fun ChatInputScreen(
                                     onLongClick = {
                                         messageActionMenuForId = message.id
                                         editTextValue = message.content
+                                        showOptionsDialog = true
                                     },
                                     repliedMessage = replied,
                                     isHighlighted = (message.id == highlightedMessageId),
@@ -552,9 +556,7 @@ fun ChatInputScreen(
                                         if (targetIndex >= 0) {
                                             coroutineScope.launch {
                                                 listState.animateScrollToItem(targetIndex)
-                                                // set highlight for a short time
                                                 highlightedMessageId = entry.messages[targetIndex].id
-                                                // clear after delay
                                                 kotlinx.coroutines.delay(1500)
                                                 highlightedMessageId = null
                                             }
@@ -614,32 +616,45 @@ fun ChatInputScreen(
                     }
                 }
 
-                // Image preview
-                imageUri?.let { uri ->
-                    Card(
+                // Image preview (Horizontal List)
+                if (selectedImageUris.isNotEmpty()) {
+                    androidx.compose.foundation.lazy.LazyRow(
                         modifier = Modifier
-                            .padding(8.dp)
-                            .height(120.dp)
                             .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Box {
-                            AsyncImage(
-                                model = uri,
-                                contentDescription = "Selected image",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                            IconButton(
-                                onClick = { imageUri = null },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(4.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                                        CircleShape
-                                    )
+                        itemsIndexed(selectedImageUris) { index, uri ->
+                            Card(
+                                modifier = Modifier.size(100.dp)
                             ) {
-                                M3Icon(imageVector = Icons.Default.Close, contentDescription = "Remove")
+                                Box {
+                                    AsyncImage(
+                                        model = uri,
+                                        contentDescription = "Selected image",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            selectedImageUris = selectedImageUris.toMutableList().apply { removeAt(index) }
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(2.dp)
+                                            .size(24.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                CircleShape
+                                            )
+                                    ) {
+                                        M3Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Remove",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -681,7 +696,7 @@ fun ChatInputScreen(
 
                     Spacer(Modifier.width(8.dp))
 
-                    val isEnabled = textFieldValue.text.isNotBlank() || imageUri != null
+                    val isEnabled = textFieldValue.text.isNotBlank() || selectedImageUris.isNotEmpty()
                     
                     val sendScale by animateFloatAsState(
                         targetValue = if (isEnabled) 1.1f else 1.0f,
@@ -692,11 +707,32 @@ fun ChatInputScreen(
                     IconButton(
                         onClick = {
                             val text = textFieldValue.text.trim()
-                            if (text.isNotBlank() || imageUri != null) {
+                            if (text.isNotBlank() || selectedImageUris.isNotEmpty()) {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                viewModel.addMessageWithImage(text, imageUri?.toString(), replyTo = replyToMessage)
+                                
+                                // 1. Send text (if any)
+                                if (text.isNotBlank()) {
+                                    if (selectedImageUris.isNotEmpty()) {
+                                        // Send text + 1st image
+                                        viewModel.addMessageWithImage(text, selectedImageUris[0].toString(), replyTo = replyToMessage)
+                                        
+                                        // Send remaining images
+                                        for (i in 1 until selectedImageUris.size) {
+                                            viewModel.addMessageWithImage("", selectedImageUris[i].toString(), replyTo = null)
+                                        }
+                                    } else {
+                                        // Text only
+                                        viewModel.addMessageWithImage(text, null, replyTo = replyToMessage)
+                                    }
+                                } else {
+                                    // No text, just images
+                                    selectedImageUris.forEach { uri ->
+                                        viewModel.addMessageWithImage("", uri.toString(), replyTo = replyToMessage)
+                                    }
+                                }
+
                                 textFieldValue = TextFieldValue("")
-                                imageUri = null
+                                selectedImageUris = emptyList()
                                 tempImageFile = null
                                 replyToMessage = null
                             }
@@ -718,10 +754,54 @@ fun ChatInputScreen(
         }
     }
 
+    // Message Options Dialog (Edit/Delete)
+    if (showOptionsDialog && messageActionMenuForId != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showOptionsDialog = false
+                messageActionMenuForId = null
+            },
+            title = { M3Text("Message Options") },
+            text = {
+                Column {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            showOptionsDialog = false
+                            showEditDialog = true
+                            // messageActionMenuForId remains set
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        M3Text("Edit Message")
+                    }
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            showOptionsDialog = false
+                            showDeleteDialog = true
+                            // messageActionMenuForId remains set
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        M3Text("Delete Message", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                androidx.compose.material.TextButton(onClick = {
+                    showOptionsDialog = false
+                    messageActionMenuForId = null
+                }) {
+                    M3Text("Cancel")
+                }
+            }
+        )
+    }
+
     // Edit dialog
-    if (showEditDialog) {
+    if (showEditDialog && messageActionMenuForId != null) {
         val messageToEdit = entry.messages.find { it.id == messageActionMenuForId }
-        messageToEdit?.let {
+        if (messageToEdit != null) {
             AlertDialog(
                 onDismissRequest = {
                     showEditDialog = false
@@ -742,9 +822,9 @@ fun ChatInputScreen(
                         onClick = {
                             val trimmed = editTextValue.trim()
                             if (trimmed.isNotBlank()) {
-                                viewModel.editMessage(it.id, trimmed)
+                                viewModel.editMessage(messageToEdit.id, trimmed)
                             } else {
-                                viewModel.deleteMessage(it.id)
+                                viewModel.deleteMessage(messageToEdit.id)
                             }
                             showEditDialog = false
                             messageActionMenuForId = null
@@ -762,13 +842,19 @@ fun ChatInputScreen(
                     }
                 }
             )
+        } else {
+            // Safety fallback if message not found
+            LaunchedEffect(Unit) {
+                showEditDialog = false
+                messageActionMenuForId = null
+            }
         }
     }
 
     // Delete dialog
-    if (showDeleteDialog) {
+    if (showDeleteDialog && messageActionMenuForId != null) {
         val messageToDelete = entry.messages.find { it.id == messageActionMenuForId }
-        messageToDelete?.let {
+        if (messageToDelete != null) {
             AlertDialog(
                 onDismissRequest = {
                     showDeleteDialog = false
@@ -779,7 +865,7 @@ fun ChatInputScreen(
                 confirmButton = {
                     androidx.compose.material.TextButton(
                         onClick = {
-                            viewModel.deleteMessage(it.id)
+                            viewModel.deleteMessage(messageToDelete.id)
                             showDeleteDialog = false
                             messageActionMenuForId = null
                         }
@@ -796,44 +882,16 @@ fun ChatInputScreen(
                     }
                 }
             )
-        }
-    }
-
-    // Action menu bottom sheet
-    messageActionMenuForId?.let { messageId ->
-        val message = entry.messages.find { it.id == messageId }
-        message?.let {
-            ModalBottomSheet(
-                onDismissRequest = { messageActionMenuForId = null },
-                sheetState = rememberModalBottomSheetState()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    ListItem(
-                        headlineContent = { M3Text("Edit") },
-                        leadingContent = { M3Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            editTextValue = it.content
-                            showEditDialog = true
-                            messageActionMenuForId = null
-                        }
-                    )
-                    Divider()
-                    ListItem(
-                        headlineContent = { M3Text("Delete") },
-                        leadingContent = { M3Icon(imageVector = Icons.Default.Delete, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            showDeleteDialog = true
-                            messageActionMenuForId = null
-                        }
-                    )
-                }
+        } else {
+             // Safety fallback
+            LaunchedEffect(Unit) {
+                showDeleteDialog = false
+                messageActionMenuForId = null
             }
         }
     }
+
+
 
     // Media picker dialog
     if (showMediaPicker) {
