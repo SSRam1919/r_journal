@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Favorite
@@ -140,11 +141,13 @@ fun EventItem(
             val icon = when (event.type) {
                 EventType.BIRTHDAY -> Icons.Default.Cake
                 EventType.ANNIVERSARY -> Icons.Default.Favorite
+                EventType.MEETING -> Icons.Default.DateRange
                 else -> Icons.Default.Event
             }
             val iconColor = when (event.type) {
                 EventType.BIRTHDAY -> Color(0xFFFF6F00) // Orange
                 EventType.ANNIVERSARY -> Color(0xFFE91E63) // Pink
+                EventType.MEETING -> Color(0xFF2196F3) // Blue
                 else -> MaterialTheme.colorScheme.primary
             }
 
@@ -223,10 +226,17 @@ fun AddEventDialog(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = { if (it.length <= 50) title = it },
                     label = { Text("Title (e.g. Mom's Birthday)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    supportingText = {
+                        Text(
+                            text = "${title.length}/50",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        )
+                    }
                 )
 
                 OutlinedButton(
@@ -249,6 +259,22 @@ fun AddEventDialog(
                         type = EventType.ANNIVERSARY,
                         selected = selectedType == EventType.ANNIVERSARY,
                         onClick = { selectedType = EventType.ANNIVERSARY }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    EventTypeChip(
+                        type = EventType.MEETING,
+                        selected = selectedType == EventType.MEETING,
+                        onClick = { selectedType = EventType.MEETING }
+                    )
+                    EventTypeChip(
+                        type = EventType.CUSTOM,
+                        selected = selectedType == EventType.CUSTOM,
+                        onClick = { selectedType = EventType.CUSTOM }
                     )
                 }
             }

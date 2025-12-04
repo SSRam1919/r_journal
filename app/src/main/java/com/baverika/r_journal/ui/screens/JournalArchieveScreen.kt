@@ -20,10 +20,12 @@ import com.baverika.r_journal.data.local.entity.JournalEntrySummary
 @Composable
 fun JournalArchiveScreen(
     journalRepo: com.baverika.r_journal.repository.JournalRepository,
+    eventRepo: com.baverika.r_journal.repository.EventRepository,
     onEntryClick: (JournalEntrySummary) -> Unit
 ) {
     // ✅ Use lightweight summaries
     val allEntries by journalRepo.allEntrySummaries.collectAsState(initial = emptyList())
+    val allEvents by eventRepo.allEvents.collectAsState(initial = emptyList())
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (allEntries.isEmpty()) {
@@ -42,8 +44,15 @@ fun JournalArchiveScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(allEntries, key = { it.id }) { entry ->
+                    // Find events for this entry's date
+                    val entryDate = entry.localDate
+                    val dayEvents = allEvents.filter { event ->
+                        event.day == entryDate.dayOfMonth && event.month == entryDate.monthValue
+                    }
+
                     EnhancedJournalCard(
                         entry = entry,
+                        events = dayEvents,
                         onClick = { onEntryClick(entry) }
                     )
                 }
@@ -54,7 +63,11 @@ fun JournalArchiveScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EnhancedJournalCard(entry: JournalEntrySummary, onClick: () -> Unit) {
+fun EnhancedJournalCard(
+    entry: JournalEntrySummary,
+    events: List<com.baverika.r_journal.data.local.entity.Event> = emptyList(),
+    onClick: () -> Unit
+) {
     val hasImages = entry.hasImages
     val imageCount = entry.imageCount
     val moodEmojis = entry.moodEmojis
@@ -81,19 +94,41 @@ fun EnhancedJournalCard(entry: JournalEntrySummary, onClick: () -> Unit) {
         ) {
             // Row 1: Day and Date (Vertical stack for grid compactness)
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = entry.dayOfWeek.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                )
-                Text(
-                    text = entry.dateFormatted, // Now includes Year
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column {
+                        Text(
+                            text = entry.dayOfWeek.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                        Text(
+                            text = entry.dateFormatted, // Now includes Year
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    // Event Indicators
+                    if (events.isNotEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            events.take(3).forEach { event ->
+                                val icon = when (event.type) {
+                                    com.baverika.r_journal.data.local.entity.EventType.BIRTHDAY -> "🎂"
+                                    com.baverika.r_journal.data.local.entity.EventType.ANNIVERSARY -> "❤️"
+                                    else -> "🎉"
+                                }
+                                Text(text = icon, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

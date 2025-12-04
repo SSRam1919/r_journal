@@ -11,7 +11,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.baverika.r_journal.data.local.entity.ChatMessage
+import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.data.local.entity.JournalEntry
+import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,7 @@ import java.util.*
 
 class JournalViewModel(
     private val repo: JournalRepository,
+    private val eventRepo: EventRepository,
     context: Context
 ) : ViewModel() {
 
@@ -38,6 +41,10 @@ class JournalViewModel(
     // Loading state
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    // Events for the current entry's date
+    private val _todaysEvents = MutableStateFlow<List<Event>>(emptyList())
+    val todaysEvents: StateFlow<List<Event>> = _todaysEvents.asStateFlow()
 
     // Track if current entry is today
     val isCurrentEntryToday: Boolean
@@ -76,6 +83,9 @@ class JournalViewModel(
                 Log.d("VM", "Loaded entry messages (MERGED): " +
                         merged.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
             }
+
+            // 3) Load events for today
+            loadEventsForDate(currentEntry.dateMillis)
         }
     }
 
@@ -90,8 +100,24 @@ class JournalViewModel(
                     // Entry not found, fallback to today
                     loadTodaysEntry()
                 }
+                // Load events for the loaded entry's date
+                loadEventsForDate(currentEntry.dateMillis)
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    private fun loadEventsForDate(dateMillis: Long) {
+        viewModelScope.launch {
+            val date = java.time.Instant.ofEpochMilli(dateMillis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+            
+            eventRepo.allEvents.collect { events ->
+                _todaysEvents.value = events.filter { event ->
+                    event.day == date.dayOfMonth && event.month == date.monthValue
+                }
             }
         }
     }

@@ -18,5 +18,6 @@ data class Event(
 enum class EventType {
     BIRTHDAY,
     ANNIVERSARY,
+    MEETING,
     CUSTOM
 }

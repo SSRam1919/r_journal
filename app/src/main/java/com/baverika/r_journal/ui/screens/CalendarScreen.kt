@@ -2,6 +2,7 @@ package com.baverika.r_journal.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -17,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,7 +44,20 @@ fun CalendarScreen(
         entries.associateBy { it.localDate }.mapValues { it.value.id }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { change, dragAmount ->
+                    change.consume()
+                    if (dragAmount < -50) {
+                        currentMonth = currentMonth.plusMonths(1)
+                    } else if (dragAmount > 50) {
+                        currentMonth = currentMonth.minusMonths(1)
+                    }
+                }
+            }
+    ) {
         // Header
         Row(
             modifier = Modifier

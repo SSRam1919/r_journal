@@ -97,6 +97,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.ui.draw.alpha
 
+import com.baverika.r_journal.data.local.entity.Event
+import com.baverika.r_journal.data.local.entity.EventType
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CompactMoodPicker(
@@ -359,6 +362,7 @@ fun ChatInputScreen(
     val selectedMoods = viewModel.getSelectedMoods()
     val canEditMood = viewModel.canEditMood
     val isCurrentEntryToday = viewModel.isCurrentEntryToday
+    val todaysEvents by viewModel.todaysEvents.collectAsState()
 
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     val listState = rememberLazyListState()
@@ -466,6 +470,13 @@ fun ChatInputScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.primary
             )
+        }
+
+        // Event Banner (Option 1)
+        if (todaysEvents.isNotEmpty()) {
+            todaysEvents.forEach { event ->
+                EventBanner(event = event)
+            }
         }
 
         CompactMoodPicker(
@@ -977,4 +988,69 @@ fun createTempImageFile(context: android.content.Context): File {
         .format(java.util.Date())
     val storageDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
     return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+}
+
+@Composable
+fun EventBanner(event: Event) {
+    var isVisible by remember { mutableStateOf(true) }
+
+    if (isVisible) {
+        val backgroundColor = when (event.type) {
+            EventType.BIRTHDAY -> Color(0xFFFFD700).copy(alpha = 0.2f) // Gold
+            EventType.ANNIVERSARY -> Color(0xFFFF69B4).copy(alpha = 0.2f) // Pink
+            EventType.MEETING -> Color(0xFF2196F3).copy(alpha = 0.2f) // Blue
+            EventType.CUSTOM -> MaterialTheme.colorScheme.surfaceVariant
+        }
+
+        val icon = when (event.type) {
+            EventType.BIRTHDAY -> "🎂"
+            EventType.ANNIVERSARY -> "❤️"
+            EventType.MEETING -> "📅"
+            EventType.CUSTOM -> "🎉"
+        }
+
+        val contentColor = MaterialTheme.colorScheme.onSurface
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = backgroundColor),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                M3Text(
+                    text = icon,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+
+                M3Text(
+                    text = event.title, // Using title as the custom message
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+
+                IconButton(
+                    onClick = { isVisible = false },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    M3Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss",
+                        tint = contentColor.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
 }

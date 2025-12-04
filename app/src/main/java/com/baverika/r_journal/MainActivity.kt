@@ -224,6 +224,7 @@ fun MainApp(
                     composable("archive") {
                         JournalArchiveScreen(
                             journalRepo = journalRepo,
+                            eventRepo = eventRepo,
                             onEntryClick = { entry ->
                                 navController.navigate("chat_input/${entry.id}")
                             }
@@ -290,7 +291,7 @@ fun MainApp(
                     // Chat input for today's entry
                     composable("chat_input") {
                         val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
-                            viewModel(factory = JournalViewModelFactory(journalRepo, context))
+                            viewModel(factory = JournalViewModelFactory(journalRepo, eventRepo, context))
 
                         LaunchedEffect(Unit) {
                             journalViewModel.loadTodaysEntry()
@@ -307,7 +308,7 @@ fun MainApp(
                         val entryId = backStackEntry.arguments?.getString("entryId")
                         if (entryId != null) {
                             val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
-                                viewModel(factory = JournalViewModelFactory(journalRepo, context))
+                                viewModel(factory = JournalViewModelFactory(journalRepo, eventRepo, context))
 
                             LaunchedEffect(entryId) {
                                 journalViewModel.loadEntryForEditing(entryId)
