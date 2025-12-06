@@ -1,6 +1,8 @@
 package com.baverika.r_journal.repository
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.baverika.r_journal.data.local.dao.JournalDao
 import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.data.remote.RetrofitClient
@@ -22,6 +24,7 @@ class JournalRepository(
     val allEntries: Flow<List<JournalEntry>> = journalDao.getAllEntries()
 
     // ✅ NEW: Lightweight flow for the list view
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     val allEntrySummaries: Flow<List<JournalEntrySummary>> = allEntries
         .map { entries ->
             entries.map { entry ->
@@ -201,4 +204,51 @@ class JournalRepository(
 //            // You can decide to ignore or bubble up error
 //        }
 //    }
+
+    // ---------- Habits ----------
+    private val habitDao = com.baverika.r_journal.data.local.database.JournalDatabase.getDatabase(com.baverika.r_journal.RJournalApp.instance).habitDao()
+
+    val allActiveHabits: Flow<List<com.baverika.r_journal.data.local.entity.Habit>> = habitDao.getAllActiveHabits()
+
+    suspend fun getHabitById(id: String): com.baverika.r_journal.data.local.entity.Habit? {
+        return habitDao.getHabitById(id)
+    }
+
+    suspend fun addHabit(habit: com.baverika.r_journal.data.local.entity.Habit) {
+        habitDao.insertHabit(habit)
+    }
+
+    suspend fun updateHabit(habit: com.baverika.r_journal.data.local.entity.Habit) {
+        habitDao.updateHabit(habit)
+    }
+
+    suspend fun deleteHabit(habit: com.baverika.r_journal.data.local.entity.Habit) {
+        habitDao.deleteHabit(habit)
+    }
+
+    fun getHabitLogsForDate(dateMillis: Long): Flow<List<com.baverika.r_journal.data.local.entity.HabitLog>> {
+        return habitDao.getHabitLogsForDate(dateMillis)
+    }
+
+    suspend fun toggleHabitCompletion(habitId: String, dateMillis: Long, isCompleted: Boolean) {
+        if (isCompleted) {
+            val log = com.baverika.r_journal.data.local.entity.HabitLog(
+                habitId = habitId,
+                dateMillis = dateMillis,
+                isCompleted = true
+            )
+            habitDao.insertHabitLog(log)
+        } else {
+            habitDao.deleteHabitLog(habitId, dateMillis)
+        }
+    }
+
+    // Synchronous methods for widget (runs on background thread)
+    fun getAllActiveHabits(): List<com.baverika.r_journal.data.local.entity.Habit> {
+        return habitDao.getAllActiveHabitsSync()
+    }
+
+    fun getHabitLogsForDateSync(dateMillis: Long): List<com.baverika.r_journal.data.local.entity.HabitLog> {
+        return habitDao.getHabitLogsForDateSync(dateMillis)
+    }
 }

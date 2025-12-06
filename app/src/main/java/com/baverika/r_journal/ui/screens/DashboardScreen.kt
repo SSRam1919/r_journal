@@ -12,14 +12,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.repository.JournalRepository
+import com.baverika.r_journal.ui.viewmodel.HabitViewModel
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(journalRepo: JournalRepository) {
+fun DashboardScreen(
+    journalRepo: JournalRepository,
+    habitViewModel: HabitViewModel
+) {
     var totalEntries by remember { mutableStateOf(0) }
     var currentStreak by remember { mutableStateOf(0) }
     var longestStreak by remember { mutableStateOf(0) }
@@ -53,6 +56,12 @@ fun DashboardScreen(journalRepo: JournalRepository) {
 
     // Collect Mood Stats
     val moodStats by journalRepo.moodStats.collectAsState(initial = JournalRepository.MoodStats(0f, 0f))
+
+    // Collect Habit Stats
+    val habits by habitViewModel.habitState.collectAsState()
+    val completedCount = habits.count { it.isCompleted }
+    val totalHabits = habits.size
+    val completionRate = if (totalHabits > 0) completedCount.toFloat() / totalHabits else 0f
 
     Column(
         modifier = Modifier
@@ -151,6 +160,104 @@ fun DashboardScreen(journalRepo: JournalRepository) {
             
             // Spacer for alignment if needed, or another stat
              Spacer(modifier = Modifier.weight(1f))
+        }
+
+        // --- Habits Section ---
+        Text(
+            text = "Today's Habits",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)
+        )
+
+        // Habit Progress Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    progress = completionRate,
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Column {
+                    Text(
+                        text = "${(completionRate * 100).toInt()}% Completed",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text = "$completedCount of $totalHabits habits done",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Quick Toggle List (Limited to 5 to avoid nested scroll issues)
+        if (habits.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    habits.take(5).forEach { habit ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = habit.isCompleted,
+                                onCheckedChange = { isChecked ->
+                                    habitViewModel.toggleHabit(habit.habit.id, isChecked)
+                                }
+                            )
+                            Text(
+                                text = habit.habit.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    
+                    if (habits.size > 5) {
+                        Text(
+                            text = "+ ${habits.size - 5} more habits",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(start = 12.dp, bottom = 8.dp)
+                        )
+                    }
+                }
+            }
+        } else {
+            Text(
+                text = "No habits for today",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp)
+            )
         }
 
         // --- Mood Section ---
@@ -258,50 +365,48 @@ fun StatItem(label: String, score: Float) {
     }
 }
 
-// Calculate current streak (consecutive days from today going backward)
-private fun calculateCurrentStreak(dates: List<LocalDate>): Int {
+// Helper functions for streak calculation
+fun calculateCurrentStreak(dates: List<LocalDate>): Int {
     if (dates.isEmpty()) return 0
-
-    val sortedDates = dates.distinct().sorted().reversed() // Most recent first
+    
+    val sortedDates = dates.distinct().sortedDescending()
     val today = LocalDate.now()
-
-    // Check if today or yesterday has an entry
-    if (!sortedDates.contains(today) && !sortedDates.contains(today.minusDays(1))) {
+    
+    // Check if the streak is active (entry today or yesterday)
+    if (sortedDates.first() != today && sortedDates.first() != today.minusDays(1)) {
         return 0
     }
-
-    var streak = 0
-    var currentDate = today
-
-    for (date in sortedDates) {
-        if (date == currentDate || date == currentDate.minusDays(1)) {
+    
+    var streak = 1
+    var currentDate = sortedDates.first()
+    
+    for (i in 1 until sortedDates.size) {
+        if (sortedDates[i] == currentDate.minusDays(1)) {
             streak++
-            currentDate = date.minusDays(1)
+            currentDate = sortedDates[i]
         } else {
             break
         }
     }
-
+    
     return streak
 }
 
-// Calculate longest streak in history
-private fun calculateLongestStreak(dates: List<LocalDate>): Int {
+fun calculateLongestStreak(dates: List<LocalDate>): Int {
     if (dates.isEmpty()) return 0
-
+    
     val sortedDates = dates.distinct().sorted()
     var maxStreak = 1
     var currentStreak = 1
-
-    for (i in 1 until sortedDates.size) {
-        val daysBetween = ChronoUnit.DAYS.between(sortedDates[i - 1], sortedDates[i])
-        if (daysBetween == 1L) {
+    
+    for (i in 0 until sortedDates.size - 1) {
+        if (sortedDates[i+1] == sortedDates[i].plusDays(1)) {
             currentStreak++
-            maxStreak = maxOf(maxStreak, currentStreak)
         } else {
+            maxStreak = maxOf(maxStreak, currentStreak)
             currentStreak = 1
         }
     }
-
-    return maxStreak
+    
+    return maxOf(maxStreak, currentStreak)
 }

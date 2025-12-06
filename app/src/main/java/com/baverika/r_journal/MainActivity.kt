@@ -2,8 +2,8 @@
 
 package com.baverika.r_journal
 
+import android.app.Application
 import android.os.Bundle
-import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -30,11 +31,12 @@ import com.baverika.r_journal.repository.SettingsRepository
 import com.baverika.r_journal.ui.screens.*
 import com.baverika.r_journal.ui.theme.RJournalTheme
 import com.baverika.r_journal.ui.viewmodel.EventViewModelFactory
+import com.baverika.r_journal.ui.viewmodel.HabitViewModel
+import com.baverika.r_journal.ui.viewmodel.HabitViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.JournalViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.SearchViewModelFactory
 import kotlinx.coroutines.launch
-
 
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,7 +138,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
-        "calendar", "events", "export", "import", "settings"
+        "calendar", "events", "export", "import", "settings", "habits"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -253,7 +255,10 @@ fun MainApp(
 
                     // Dashboard
                     composable("dashboard") {
-                        DashboardScreen(journalRepo)
+                        val habitViewModel: HabitViewModel = viewModel(
+                            factory = HabitViewModelFactory(LocalContext.current.applicationContext as Application, journalRepo)
+                        )
+                        DashboardScreen(journalRepo, habitViewModel)
                     }
 
                     // Calendar
@@ -326,6 +331,30 @@ fun MainApp(
                                 }
                             }
                         }
+                    }
+
+                    // Habits
+                    composable("habits") {
+                        val habitViewModel: HabitViewModel = viewModel(
+                            factory = HabitViewModelFactory(LocalContext.current.applicationContext as Application, journalRepo)
+                        )
+                        HabitTrackerScreen(
+                            viewModel = habitViewModel,
+                            navController = navController
+                        )
+                    }
+
+                    // Add/Edit Habit
+                    composable("add_habit?habitId={habitId}") { backStackEntry ->
+                        val habitId = backStackEntry.arguments?.getString("habitId")
+                        val habitViewModel: HabitViewModel = viewModel(
+                            factory = HabitViewModelFactory(LocalContext.current.applicationContext as Application, journalRepo)
+                        )
+                        AddEditHabitScreen(
+                            viewModel = habitViewModel,
+                            navController = navController,
+                            habitId = habitId
+                        )
                     }
 
                     // New quick note screen
@@ -443,6 +472,12 @@ fun DrawerContent(
             label = "Dashboard",
             isSelected = currentRoute == "dashboard",
             onClick = { onScreenSelected("dashboard") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.CheckCircle,
+            label = "Habits",
+            isSelected = currentRoute == "habits",
+            onClick = { onScreenSelected("habits") }
         )
         DrawerItem(
             icon = Icons.Filled.CalendarMonth,

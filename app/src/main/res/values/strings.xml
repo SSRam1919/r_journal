@@ -101,4 +101,7 @@
     <string name="cd_mood_selected">Mood selected</string>
     <string name="cd_attached_image">Attached image</string>
     <string name="cd_remove_image">Remove image</string>
+
+    <!-- Widget -->
+    <string name="widget_description">Track your daily habits</string>
 </resources>

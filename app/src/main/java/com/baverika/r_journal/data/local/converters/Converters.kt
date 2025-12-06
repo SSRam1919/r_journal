@@ -101,4 +101,22 @@ class Converters {
         val array = JSONArray(json)
         return List(array.length()) { i -> Uri.parse(array.getString(i)) }
     }
+
+    // -------------------------------
+    // Int List converters (List<Int>)
+    // -------------------------------
+    @TypeConverter
+    fun fromIntList(list: List<Int>?): String {
+        if (list.isNullOrEmpty()) return "[]"
+        val array = JSONArray()
+        list.forEach { array.put(it) }
+        return array.toString()
+    }
+
+    @TypeConverter
+    fun toIntList(json: String?): List<Int> {
+        if (json.isNullOrEmpty() || json == "[]") return emptyList()
+        val array = JSONArray(json)
+        return List(array.length()) { i -> array.getInt(i) }
+    }
 }
