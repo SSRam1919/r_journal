@@ -1,7 +1,9 @@
 package com.baverika.r_journal.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -9,7 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.ui.viewmodel.HabitViewModel
@@ -62,6 +66,9 @@ fun DashboardScreen(
     val completedCount = habits.count { it.isCompleted }
     val totalHabits = habits.size
     val completionRate = if (totalHabits > 0) completedCount.toFloat() / totalHabits else 0f
+    
+    // Collect Weekly Stats
+    val weeklyStats by habitViewModel.weeklyStats.collectAsState()
 
     Column(
         modifier = Modifier
@@ -272,6 +279,11 @@ fun DashboardScreen(
         StatsSummaryCard(stats = moodStats)
         
         Spacer(modifier = Modifier.height(24.dp))
+        
+        // --- Habit History Chart ---
+        HabitHistoryChart(stats = weeklyStats)
+        
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -409,4 +421,72 @@ fun calculateLongestStreak(dates: List<LocalDate>): Int {
     }
     
     return maxOf(maxStreak, currentStreak)
+}
+
+@Composable
+fun HabitHistoryChart(stats: List<Pair<LocalDate, Int>>) {
+    if (stats.isEmpty()) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Habit History (Last 7 Days)",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            val maxCount = stats.maxOfOrNull { it.second } ?: 1
+            val chartHeight = 150.dp
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(chartHeight),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                stats.forEach { (date, count) ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        // Bar
+                        val barHeightRatio = if (maxCount > 0) count.toFloat() / maxCount else 0f
+                        
+                        Box(
+                            modifier = Modifier
+                                .width(16.dp)
+                                .fillMaxHeight(barHeightRatio.coerceAtLeast(0.02f)) // Min height for visibility (tiny dot)
+                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                .background(if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) // Grey if 0
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        // Date Label
+                        Text(
+                            text = date.format(java.time.format.DateTimeFormatter.ofPattern("EEE")),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        // Count Label
+                        Text(
+                            text = count.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (count > 0) FontWeight.Bold else FontWeight.Normal,
+                            color = if (count > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

@@ -49,6 +49,32 @@ class HabitViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Weekly Stats (Last 7 days)
+    val weeklyStats = flow {
+        val end = LocalDate.now()
+        val start = end.minusDays(6) // Last 7 days
+        
+        val startMillis = start.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+        val endMillis = end.atStartOfDay(ZoneId.systemDefault()).plusDays(1).minusNanos(1).toEpochSecond() * 1000
+        
+        emitAll(
+            repository.getHabitLogsBetween(startMillis, endMillis).map { logs ->
+                (0..6).map { i ->
+                    val date = start.plusDays(i.toLong())
+                    val dateMillis = date.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+                    val count = logs.count { 
+                        it.dateMillis == dateMillis && it.isCompleted 
+                    }
+                    date to count
+                }
+            }
+        )
+    }.stateIn(
+        viewModelScope, 
+        SharingStarted.WhileSubscribed(5000), 
+        (0..6).map { LocalDate.now().minusDays(6 - it.toLong()) to 0 }
+    )
+
     fun updateSelectedDate(date: LocalDate) {
         _selectedDate.value = date
     }

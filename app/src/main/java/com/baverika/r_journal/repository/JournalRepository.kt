@@ -214,6 +214,10 @@ class JournalRepository(
         return habitDao.getHabitById(id)
     }
 
+    fun getHabitLogsBetween(startMillis: Long, endMillis: Long): Flow<List<com.baverika.r_journal.data.local.entity.HabitLog>> {
+        return habitDao.getHabitLogsBetween(startMillis, endMillis)
+    }
+
     suspend fun addHabit(habit: com.baverika.r_journal.data.local.entity.Habit) {
         habitDao.insertHabit(habit)
     }

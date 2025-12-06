@@ -30,6 +30,9 @@ interface HabitDao {
     @Query("SELECT * FROM habit_logs WHERE habitId = :habitId")
     fun getLogsForHabit(habitId: String): Flow<List<HabitLog>>
 
+    @Query("SELECT * FROM habit_logs WHERE dateMillis BETWEEN :startMillis AND :endMillis")
+    fun getHabitLogsBetween(startMillis: Long, endMillis: Long): Flow<List<HabitLog>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHabitLog(log: HabitLog)
 
