@@ -191,6 +191,15 @@ fun MainApp(
                     },
                     actions = {
                         if (currentRoute == "archive") {
+                            // Search Icon
+                            IconButton(onClick = { navController.navigate("search") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search Journals",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
                             // Biometric Toggle
                             var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
                             
@@ -258,7 +267,19 @@ fun MainApp(
                         val habitViewModel: HabitViewModel = viewModel(
                             factory = HabitViewModelFactory(LocalContext.current.applicationContext as Application, journalRepo)
                         )
-                        DashboardScreen(journalRepo, habitViewModel)
+                        DashboardScreen(
+                            journalRepo = journalRepo,
+                            habitViewModel = habitViewModel,
+                            onYearInPixelsClick = { navController.navigate("year_in_pixels") }
+                        )
+                    }
+
+                    // Year in Pixels
+                    composable("year_in_pixels") {
+                        val viewModel: com.baverika.r_journal.ui.viewmodel.YearInPixelsViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.YearInPixelsViewModelFactory(journalRepo)
+                        )
+                        YearInPixelsScreen(viewModel = viewModel, navController = navController)
                     }
 
                     // Calendar
@@ -457,15 +478,9 @@ fun DrawerContent(
         )
         DrawerItem(
             icon = Icons.Filled.Note,
-            label = "Quick Notes",
+            label = "Notes",
             isSelected = currentRoute == "quick_notes",
             onClick = { onScreenSelected("quick_notes") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.Search,
-            label = "Search",
-            isSelected = currentRoute == "search",
-            onClick = { onScreenSelected("search") }
         )
         DrawerItem(
             icon = Icons.Filled.BarChart,

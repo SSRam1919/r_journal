@@ -167,7 +167,7 @@ fun ExportScreen(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "Quick Notes",
+                                text = "Notes",
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }

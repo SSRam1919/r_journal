@@ -126,9 +126,8 @@ object PdfExportUtils {
                 yPosition += 40f
             }
 
-            // --- Quick Notes ---
             if (quickNotes.isNotEmpty()) {
-                canvas.drawText("Quick Notes", margin, yPosition, headerPaint)
+                canvas.drawText("Notes", margin, yPosition, headerPaint)
                 yPosition += 30f
 
                 quickNotes.sortedByDescending { it.timestamp }.forEach { note ->

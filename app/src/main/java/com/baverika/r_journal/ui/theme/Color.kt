@@ -23,7 +23,7 @@ val TertiaryContainer = Color(0xFF850036)
 val OnTertiaryContainer = Color(0xFFFFD8E4)
 
 // Backgrounds - Deep Blue-Grey
-val Background = Color(0xFF0F1115) // Very dark, almost black blue-grey
+val Background = Color.Black // Pitch black
 val OnBackground = Color(0xFFE6E1E5)
 
 // Surfaces - Slightly lighter than background
@@ -42,8 +42,8 @@ val ErrorContainer = Color(0xFF93000A)
 val OnErrorContainer = Color(0xFFFFDAD6)
 
 // Gradients
-val BackgroundGradientStart = Color(0xFF0F1115)
-val BackgroundGradientEnd = Color(0xFF1A1D24)
+val BackgroundGradientStart = Color.Black
+val BackgroundGradientEnd = Color(0xFF0A0A0A)
 
 val CardGradientStart = Color(0xFF23262F)
 val CardGradientEnd = Color(0xFF2B2F38)

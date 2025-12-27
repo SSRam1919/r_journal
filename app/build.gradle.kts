@@ -115,6 +115,9 @@ dependencies {
     kapt("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
 
+    // DataStore for preferences
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
     // Gson (not needed - using JSON manually, but keeping for compatibility)
     implementation("com.google.code.gson:gson:2.10.1")
 

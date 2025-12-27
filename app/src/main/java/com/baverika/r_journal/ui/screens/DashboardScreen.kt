@@ -25,7 +25,8 @@ import java.time.ZoneId
 @Composable
 fun DashboardScreen(
     journalRepo: JournalRepository,
-    habitViewModel: HabitViewModel
+    habitViewModel: HabitViewModel,
+    onYearInPixelsClick: () -> Unit
 ) {
     var totalEntries by remember { mutableStateOf(0) }
     var currentStreak by remember { mutableStateOf(0) }
@@ -277,6 +278,19 @@ fun DashboardScreen(
         )
 
         StatsSummaryCard(stats = moodStats)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Year in Pixel Button
+        OutlinedButton(
+            onClick = onYearInPixelsClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.GridOn, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("View Year in Pixels")
+        }
         
         Spacer(modifier = Modifier.height(24.dp))
         
