@@ -66,9 +66,9 @@ object ImportUtils {
             ZipInputStream(inputStream).use { zis ->
                 var zipEntry = zis.nextEntry
 
-                // First pass: Extract all images to temp storage
+                // First pass: Extract all images and voice notes to temp storage
                 while (zipEntry != null) {
-                    if (!zipEntry.isDirectory && zipEntry.name.startsWith("images/")) {
+                    if (!zipEntry.isDirectory && (zipEntry.name.startsWith("images/") || zipEntry.name.startsWith("voice_notes/"))) {
                         try {
                             val tempFile = File(tempImagesDir, File(zipEntry.name).name)
                             FileOutputStream(tempFile).use { fos ->
@@ -225,6 +225,32 @@ object ImportUtils {
                             val lastMessage = messages.last()
                             messages[messages.lastIndex] = lastMessage.copy(
                                 imageUri = permanentFile.absolutePath
+                            )
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+
+                // Check for voice note reference
+                val voiceRegex = Regex("""🎤 \[Voice Note - (\d+)s\]\(\.\.\/\.\.\/voice_notes\/${localDate}\/(.+)\)""")
+                val voiceMatch = voiceRegex.find(line)
+
+                if (voiceMatch != null && messages.isNotEmpty()) {
+                    val durationSec = voiceMatch.groupValues[1].toLongOrNull() ?: 0L
+                    val voiceName = voiceMatch.groupValues[2]
+                    val zipVoicePath = "voice_notes/${localDate}/$voiceName"
+
+                    val voiceStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+                    imageMap[zipVoicePath]?.let { tempVoiceFile ->
+                        try {
+                            val permanentFile = File(voiceStorageDir, voiceName)
+                            tempVoiceFile.copyTo(permanentFile, overwrite = true)
+
+                            val lastMessage = messages.last()
+                            messages[messages.lastIndex] = lastMessage.copy(
+                                voiceNoteUri = permanentFile.absolutePath,
+                                voiceNoteDuration = durationSec * 1000
                             )
                         } catch (e: Exception) {
                             e.printStackTrace()

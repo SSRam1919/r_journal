@@ -27,7 +27,10 @@ import com.baverika.r_journal.data.remote.ServerPrefs
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
+
 import com.baverika.r_journal.repository.SettingsRepository
+import com.baverika.r_journal.repository.PasswordRepository
+
 import com.baverika.r_journal.ui.screens.*
 import com.baverika.r_journal.ui.theme.RJournalTheme
 import com.baverika.r_journal.ui.viewmodel.EventViewModelFactory
@@ -35,7 +38,10 @@ import com.baverika.r_journal.ui.viewmodel.HabitViewModel
 import com.baverika.r_journal.ui.viewmodel.HabitViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.JournalViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModelFactory
+
 import com.baverika.r_journal.ui.viewmodel.SearchViewModelFactory
+import com.baverika.r_journal.ui.viewmodel.PasswordViewModelFactory
+
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
@@ -46,7 +52,9 @@ class MainActivity : FragmentActivity() {
         val journalRepo = JournalRepository(db.journalDao())
         val quickNoteRepo = QuickNoteRepository(db.quickNoteDao())
         val eventRepo = EventRepository(db.eventDao())
+        val passwordRepo = PasswordRepository(db.passwordDao())
         val settingsRepo = SettingsRepository(this)
+
 
         // Biometric Lock State
         var isLocked by mutableStateOf(true)
@@ -78,7 +86,10 @@ class MainActivity : FragmentActivity() {
         )
 
         setContent {
-            RJournalTheme {
+            var currentTheme by remember { mutableStateOf(settingsRepo.appTheme) }
+
+            RJournalTheme(theme = currentTheme) {
+
                 if (isLocked) {
                     // Lock Screen
                     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -108,8 +119,17 @@ class MainActivity : FragmentActivity() {
                         }
                     }
                 } else {
-                    MainApp(journalRepo, quickNoteRepo, eventRepo, settingsRepo)
+                    MainApp(
+                        journalRepo = journalRepo,
+                        quickNoteRepo = quickNoteRepo,
+                        eventRepo = eventRepo,
+                        passwordRepo = passwordRepo,
+                        settingsRepo = settingsRepo,
+                        onThemeChanged = { newTheme -> currentTheme = newTheme }
+                    )
                 }
+
+
             }
         }
     }
@@ -121,8 +141,11 @@ fun MainApp(
     journalRepo: JournalRepository,
     quickNoteRepo: QuickNoteRepository,
     eventRepo: EventRepository,
-    settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current)
+    passwordRepo: PasswordRepository,
+    settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current),
+    onThemeChanged: (com.baverika.r_journal.ui.theme.AppTheme) -> Unit = {}
 ) {
+
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -417,11 +440,23 @@ fun MainApp(
                         }
                     }
 
+                    // Password Generator
+                    composable("password_generator") {
+                        val viewModel: com.baverika.r_journal.ui.viewmodel.PasswordViewModel = viewModel(
+                            factory = PasswordViewModelFactory(passwordRepo)
+                        )
+                        PasswordGeneratorScreen(
+                            viewModel = viewModel
+                        )
+                    }
+
                     // Settings
                     composable("settings") {
                         SettingsScreen(
                             settingsRepo = settingsRepo,
-                            navController = navController
+                            passwordRepo = passwordRepo,
+                            navController = navController,
+                            onThemeChanged = onThemeChanged
                         )
                     }
                 }
@@ -502,7 +537,15 @@ fun DrawerContent(
         )
 
         DrawerItem(
+            icon = Icons.Filled.VpnKey,
+            label = "Password Generator",
+            isSelected = currentRoute == "password_generator",
+            onClick = { onScreenSelected("password_generator") }
+        )
+
+        DrawerItem(
             icon = Icons.Filled.Event,
+
             label = "Special Dates",
             isSelected = currentRoute == "events",
             onClick = { onScreenSelected("events") }

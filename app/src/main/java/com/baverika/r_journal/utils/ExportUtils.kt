@@ -68,6 +68,23 @@ object ExportUtils {
                                 }
                             }
                         }
+
+                        // Export voice notes
+                        message.voiceNoteUri?.let { voicePath ->
+                            val voiceFile = File(voicePath)
+                            if (voiceFile.exists()) {
+                                try {
+                                    val voiceFileName = "voice_notes/${entry.localDate}/${voiceFile.name}"
+                                    zos.putNextEntry(ZipEntry(voiceFileName))
+                                    FileInputStream(voiceFile).use { fis ->
+                                        fis.copyTo(zos)
+                                    }
+                                    zos.closeEntry()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -112,12 +129,26 @@ object ExportUtils {
                     .ofInstant(java.time.Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault())
                     .format(DateTimeFormatter.ofPattern("HH:mm:ss"))
 
-                append("**[${message.role}] ($time):** ${message.content}\n")
+                if (message.content.isNotBlank()) {
+                    append("**[${message.role}] ($time):** ${message.content}\n")
+                } else if (message.voiceNoteUri != null) {
+                    append("**[${message.role}] ($time):** 🎤 Voice Note\n")
+                } else if (message.imageUri != null) {
+                    append("**[${message.role}] ($time):**\n")
+                }
 
                 message.imageUri?.let { imagePath ->
                     val imageFile = File(imagePath)
                     if (imageFile.exists()) {
                         append("![Image](../../images/${entry.localDate}/${imageFile.name})\n")
+                    }
+                }
+
+                message.voiceNoteUri?.let { voicePath ->
+                    val voiceFile = File(voicePath)
+                    if (voiceFile.exists()) {
+                        val durationSec = message.voiceNoteDuration / 1000
+                        append("🎤 [Voice Note - ${durationSec}s](../../voice_notes/${entry.localDate}/${voiceFile.name})\n")
                     }
                 }
                 append("\n")

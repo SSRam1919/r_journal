@@ -12,11 +12,15 @@ import com.baverika.r_journal.data.local.dao.EventDao
 import com.baverika.r_journal.data.local.dao.HabitDao
 import com.baverika.r_journal.data.local.dao.JournalDao
 import com.baverika.r_journal.data.local.dao.QuickNoteDao
+import com.baverika.r_journal.data.local.dao.PasswordDao
+
 import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.data.local.entity.Habit
 import com.baverika.r_journal.data.local.entity.HabitLog
 import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.data.local.entity.QuickNote
+import com.baverika.r_journal.data.local.entity.Password
+
 
 @Database(
     entities = [
@@ -24,9 +28,12 @@ import com.baverika.r_journal.data.local.entity.QuickNote
         QuickNote::class,
         Event::class,
         Habit::class,
-        HabitLog::class
+
+        HabitLog::class,
+        Password::class
     ],
-    version = 8,
+    version = 9,
+
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -36,6 +43,8 @@ abstract class JournalDatabase : RoomDatabase() {
     abstract fun quickNoteDao(): QuickNoteDao
     abstract fun eventDao(): EventDao
     abstract fun habitDao(): HabitDao
+    abstract fun passwordDao(): PasswordDao
+
 
     companion object {
         @Volatile
@@ -128,14 +137,34 @@ abstract class JournalDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `passwords` (
+                        `id` TEXT NOT NULL, 
+                        `siteName` TEXT NOT NULL, 
+                        `username` TEXT NOT NULL, 
+                        `passwordValue` TEXT NOT NULL, 
+                        `createdAt` INTEGER NOT NULL, 
+                        `updatedAt` INTEGER NOT NULL, 
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getDatabase(context: Context): JournalDatabase {
+
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     JournalDatabase::class.java,
                     "journal_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+
                     .build()
                 INSTANCE = instance
                 instance

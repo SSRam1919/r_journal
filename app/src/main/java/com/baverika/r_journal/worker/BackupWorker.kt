@@ -17,29 +17,46 @@ class BackupWorker(
     override suspend fun doWork(): Result {
         return try {
             val dbName = "journal_database"
-            val dbPath = applicationContext.getDatabasePath(dbName)
+            val dbFolder = applicationContext.getDatabasePath(dbName).parentFile
+            
+            // Source paths
+            val dbFile = File(dbFolder, dbName)
+            val walFile = File(dbFolder, "$dbName-wal")
+            val shmFile = File(dbFolder, "$dbName-shm")
 
-            if (!dbPath.exists()) {
-                Log.e("BackupWorker", "Database file not found: ${dbPath.absolutePath}")
+            if (!dbFile.exists()) {
+                Log.e("BackupWorker", "Database file not found: ${dbFile.absolutePath}")
                 return Result.failure()
             }
 
-            // Create Backups directory in app-specific external storage
-            // /Android/data/com.baverika.r_journal/files/Backups
-            val backupDir = File(applicationContext.getExternalFilesDir(null), "Backups")
+            // Target: Downloads/RJournal_Backups (Visible to user)
+            val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            val backupDir = File(downloadsDir, "RJournal_Backups")
             if (!backupDir.exists()) {
                 backupDir.mkdirs()
             }
 
-            // Create backup file name with timestamp
+            // Create timestamped folder for this backup session
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val backupFile = File(backupDir, "journal_backup_$timestamp.db")
+            val sessionBackupDir = File(backupDir, "backup_$timestamp")
+            if (!sessionBackupDir.exists()) {
+                sessionBackupDir.mkdirs()
+            }
 
-            // Copy file
-            dbPath.copyTo(backupFile, overwrite = true)
-            Log.d("BackupWorker", "Backup created: ${backupFile.absolutePath}")
+            // Copy DB file
+            dbFile.copyTo(File(sessionBackupDir, "$dbName.db"), overwrite = true)
+            
+            // Copy WAL/SHM if they exist (Critical for data integrity in WAL mode)
+            if (walFile.exists()) {
+                walFile.copyTo(File(sessionBackupDir, "$dbName.db-wal"), overwrite = true)
+            }
+            if (shmFile.exists()) {
+                shmFile.copyTo(File(sessionBackupDir, "$dbName.db-shm"), overwrite = true)
+            }
 
-            // Retention Policy: Keep only last 2 backups
+            Log.d("BackupWorker", "Backup created at: ${sessionBackupDir.absolutePath}")
+
+            // Retention Policy: Keep only 5 most recent backup FOLDERS
             cleanOldBackups(backupDir)
 
             Result.success()
@@ -49,23 +66,21 @@ class BackupWorker(
         }
     }
 
-    private fun cleanOldBackups(backupDir: File) {
-        val files = backupDir.listFiles { file ->
-            file.name.startsWith("journal_backup_") && file.name.endsWith(".db")
+    private fun cleanOldBackups(backupRoot: File) {
+        // List subdirectories that start with "backup_"
+        val backupFolders = backupRoot.listFiles { file -> 
+            file.isDirectory && file.name.startsWith("backup_") 
         } ?: return
 
         // Sort by modification time (oldest first)
-        val sortedFiles = files.sortedBy { it.lastModified() }
+        val sortedFolders = backupFolders.sortedBy { it.lastModified() }
 
-        // If more than 2, delete the oldest ones
-        if (sortedFiles.size > 2) {
-            val filesToDelete = sortedFiles.take(sortedFiles.size - 2)
-            filesToDelete.forEach { file ->
-                if (file.delete()) {
-                    Log.d("BackupWorker", "Deleted old backup: ${file.name}")
-                } else {
-                    Log.w("BackupWorker", "Failed to delete old backup: ${file.name}")
-                }
+        // Keep last 5
+        if (sortedFolders.size > 5) {
+            val foldersToDelete = sortedFolders.take(sortedFolders.size - 5)
+            foldersToDelete.forEach { folder ->
+                folder.deleteRecursively()
+                Log.d("BackupWorker", "Deleted old backup number: ${folder.name}")
             }
         }
     }
