@@ -129,4 +129,17 @@ class Converters {
         val array = JSONArray(json)
         return List(array.length()) { i -> array.getInt(i) }
     }
+
+    // -------------------------------
+    // TaskPriority converters
+    // -------------------------------
+    @TypeConverter
+    fun fromTaskPriority(priority: com.baverika.r_journal.data.local.entity.TaskPriority): String {
+        return priority.name
+    }
+
+    @TypeConverter
+    fun toTaskPriority(value: String): com.baverika.r_journal.data.local.entity.TaskPriority {
+        return com.baverika.r_journal.data.local.entity.TaskPriority.fromString(value)
+    }
 }

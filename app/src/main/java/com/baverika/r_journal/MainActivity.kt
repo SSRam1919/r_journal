@@ -54,6 +54,13 @@ class MainActivity : FragmentActivity() {
         val eventRepo = EventRepository(db.eventDao())
         val passwordRepo = PasswordRepository(db.passwordDao())
         val settingsRepo = SettingsRepository(this)
+        
+        // Quote feature repositories
+        val quoteRepo = com.baverika.r_journal.quotes.data.QuoteRepository(db.quoteDao())
+        val widgetSettingsDataStore = com.baverika.r_journal.quotes.settings.WidgetSettingsDataStore.getInstance(this)
+        
+        // Task feature repositories
+        val taskRepo = com.baverika.r_journal.repository.TaskRepository(db.taskDao())
 
 
         // Biometric Lock State
@@ -119,12 +126,19 @@ class MainActivity : FragmentActivity() {
                         }
                     }
                 } else {
+                    // Check if launched from widget with navigation intent
+                    val initialRoute = intent?.getStringExtra("navigate_to") ?: "archive"
+                    
                     MainApp(
                         journalRepo = journalRepo,
                         quickNoteRepo = quickNoteRepo,
                         eventRepo = eventRepo,
                         passwordRepo = passwordRepo,
+                        quoteRepo = quoteRepo,
+                        widgetSettingsDataStore = widgetSettingsDataStore,
+                        taskRepo = taskRepo,
                         settingsRepo = settingsRepo,
+                        initialRoute = initialRoute,
                         onThemeChanged = { newTheme -> currentTheme = newTheme }
                     )
                 }
@@ -142,7 +156,11 @@ fun MainApp(
     quickNoteRepo: QuickNoteRepository,
     eventRepo: EventRepository,
     passwordRepo: PasswordRepository,
+    quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
+    widgetSettingsDataStore: com.baverika.r_journal.quotes.settings.WidgetSettingsDataStore,
+    taskRepo: com.baverika.r_journal.repository.TaskRepository,
     settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current),
+    initialRoute: String = "archive",
     onThemeChanged: (com.baverika.r_journal.ui.theme.AppTheme) -> Unit = {}
 ) {
 
@@ -161,7 +179,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
-        "calendar", "events", "export", "import", "settings", "habits"
+        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -252,7 +270,7 @@ fun MainApp(
                 // Navigation content
                 NavHost(
                     navController = navController,
-                    startDestination = "archive"
+                    startDestination = initialRoute
                 ) {
                     // Archive screen (default/home)
                     composable("archive") {
@@ -459,6 +477,70 @@ fun MainApp(
                             onThemeChanged = onThemeChanged
                         )
                     }
+
+                    // Motivational Quotes
+                    composable("quotes") {
+                        val quotesViewModel: com.baverika.r_journal.quotes.ui.QuotesViewModel = viewModel(
+                            factory = com.baverika.r_journal.quotes.ui.QuotesViewModelFactory(quoteRepo, context)
+                        )
+                        com.baverika.r_journal.quotes.ui.QuotesScreen(
+                            viewModel = quotesViewModel,
+                            navController = navController
+                        )
+                    }
+
+                    // Quote Widget Settings
+                    composable("quote_widget_settings") {
+                        com.baverika.r_journal.quotes.settings.WidgetSettingsScreen(
+                            settingsDataStore = widgetSettingsDataStore,
+                            navController = navController
+                        )
+                    }
+
+                    // Tasks
+                    composable("tasks") {
+                        val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
+                                LocalContext.current.applicationContext as android.app.Application,
+                                taskRepo
+                            )
+                        )
+                        TaskListScreen(
+                            viewModel = taskViewModel,
+                            navController = navController
+                        )
+                    }
+
+                    // Add Task
+                    composable("add_task") {
+                        val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
+                                LocalContext.current.applicationContext as android.app.Application,
+                                taskRepo
+                            )
+                        )
+                        AddEditTaskScreen(
+                            viewModel = taskViewModel,
+                            navController = navController,
+                            taskId = null
+                        )
+                    }
+
+                    // Edit Task
+                    composable("edit_task/{taskId}") { backStackEntry ->
+                        val taskId = backStackEntry.arguments?.getString("taskId")
+                        val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
+                                LocalContext.current.applicationContext as android.app.Application,
+                                taskRepo
+                            )
+                        )
+                        AddEditTaskScreen(
+                            viewModel = taskViewModel,
+                            navController = navController,
+                            taskId = taskId
+                        )
+                    }
                 }
 
                 if (currentRoute == "archive") {
@@ -528,6 +610,18 @@ fun DrawerContent(
             label = "Habits",
             isSelected = currentRoute == "habits",
             onClick = { onScreenSelected("habits") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.Checklist,
+            label = "Tasks",
+            isSelected = currentRoute == "tasks",
+            onClick = { onScreenSelected("tasks") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.FormatQuote,
+            label = "Quotes",
+            isSelected = currentRoute == "quotes",
+            onClick = { onScreenSelected("quotes") }
         )
         DrawerItem(
             icon = Icons.Filled.CalendarMonth,

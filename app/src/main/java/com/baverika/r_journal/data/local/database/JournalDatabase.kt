@@ -13,6 +13,9 @@ import com.baverika.r_journal.data.local.dao.HabitDao
 import com.baverika.r_journal.data.local.dao.JournalDao
 import com.baverika.r_journal.data.local.dao.QuickNoteDao
 import com.baverika.r_journal.data.local.dao.PasswordDao
+import com.baverika.r_journal.data.local.dao.TaskDao
+import com.baverika.r_journal.quotes.data.QuoteDao
+import com.baverika.r_journal.quotes.data.QuoteEntity
 
 import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.data.local.entity.Habit
@@ -20,6 +23,8 @@ import com.baverika.r_journal.data.local.entity.HabitLog
 import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.data.local.entity.Password
+import com.baverika.r_journal.data.local.entity.Task
+import com.baverika.r_journal.data.local.entity.TaskCategory
 
 
 @Database(
@@ -28,12 +33,13 @@ import com.baverika.r_journal.data.local.entity.Password
         QuickNote::class,
         Event::class,
         Habit::class,
-
         HabitLog::class,
-        Password::class
+        Password::class,
+        QuoteEntity::class,
+        Task::class,
+        TaskCategory::class
     ],
-    version = 9,
-
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -44,6 +50,8 @@ abstract class JournalDatabase : RoomDatabase() {
     abstract fun eventDao(): EventDao
     abstract fun habitDao(): HabitDao
     abstract fun passwordDao(): PasswordDao
+    abstract fun quoteDao(): QuoteDao
+    abstract fun taskDao(): TaskDao
 
 
     companion object {
@@ -155,6 +163,66 @@ abstract class JournalDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create quotes table for Motivational Quotes feature
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `quotes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `text` TEXT NOT NULL,
+                        `author` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `isActive` INTEGER NOT NULL DEFAULT 1
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create task_categories table
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `task_categories` (
+                        `id` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `color` INTEGER NOT NULL,
+                        `icon` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+
+                // Create tasks table
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `tasks` (
+                        `id` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `description` TEXT NOT NULL,
+                        `dueDate` INTEGER,
+                        `priority` TEXT NOT NULL,
+                        `categoryId` TEXT,
+                        `isCompleted` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        `reminderTime` INTEGER,
+                        `isRecurring` INTEGER NOT NULL,
+                        `recurringPattern` TEXT,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`categoryId`) REFERENCES `task_categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+
+                // Create index for categoryId
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_categoryId` ON `tasks` (`categoryId`)")
+            }
+        }
+
         fun getDatabase(context: Context): JournalDatabase {
 
             return INSTANCE ?: synchronized(this) {
@@ -163,7 +231,7 @@ abstract class JournalDatabase : RoomDatabase() {
                     JournalDatabase::class.java,
                     "journal_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
 
                     .build()
                 INSTANCE = instance

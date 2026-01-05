@@ -444,8 +444,52 @@ private fun PasswordListItem(
     onDelete: () -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { 
+                Text(
+                    "Delete Password?",
+                    style = MaterialTheme.typography.titleMedium
+                ) 
+            },
+            text = { 
+                Text(
+                    "Are you sure you want to delete the password for \"${password.siteName}\"? This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyMedium
+                ) 
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirmation = false
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showDeleteConfirmation = false }
+                ) {
+                    Text("Cancel")
+                }
+            },
+            icon = {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        )
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -510,7 +554,10 @@ private fun PasswordListItem(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                IconButton(
+                    onClick = { showDeleteConfirmation = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete",
