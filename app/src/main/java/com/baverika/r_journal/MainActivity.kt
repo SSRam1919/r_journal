@@ -17,6 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -168,6 +171,27 @@ fun MainApp(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val navController = rememberNavController()
+
+    // ViewModel for app-wide events (Birthday Easter Egg)
+    val mainViewModel: com.baverika.r_journal.ui.viewmodel.MainViewModel = viewModel(
+        factory = com.baverika.r_journal.ui.viewmodel.MainViewModelFactory(settingsRepo)
+    )
+    val showBirthdayEasterEgg by mainViewModel.showBirthdayEasterEgg.collectAsState()
+    val userAge by mainViewModel.userAge.collectAsState()
+    
+    // Check birthday on app resume
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                mainViewModel.checkBirthday()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Track current route for FAB visibility
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -559,6 +583,14 @@ fun MainApp(
                             modifier = Modifier.size(24.dp)
                         )
                     }
+                }
+
+
+                if (showBirthdayEasterEgg) {
+                    com.baverika.r_journal.ui.components.BirthdayEasterEggOverlay(
+                        age = userAge,
+                        onFinished = { mainViewModel.markBirthdayShown() }
+                    )
                 }
             }
         }

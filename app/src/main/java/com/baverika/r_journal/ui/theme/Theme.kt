@@ -121,6 +121,33 @@ private val RosewoodColorScheme = darkColorScheme(
 )
 
 /**
+ * Color scheme for Blue Sky theme
+ */
+private val BlueSkyColorScheme = darkColorScheme(
+    primary = BlueSkyColors.Primary,
+    onPrimary = BlueSkyColors.OnPrimary,
+    primaryContainer = BlueSkyColors.PrimaryContainer,
+    onPrimaryContainer = BlueSkyColors.OnPrimaryContainer,
+    secondary = BlueSkyColors.Secondary,
+    onSecondary = BlueSkyColors.OnSecondary,
+    secondaryContainer = BlueSkyColors.SecondaryContainer,
+    onSecondaryContainer = BlueSkyColors.OnSecondaryContainer,
+    tertiary = BlueSkyColors.Tertiary,
+    onTertiary = BlueSkyColors.OnTertiary,
+    tertiaryContainer = BlueSkyColors.TertiaryContainer,
+    onTertiaryContainer = BlueSkyColors.OnTertiaryContainer,
+    background = BlueSkyColors.Background,
+    onBackground = BlueSkyColors.OnBackground,
+    surface = BlueSkyColors.Surface,
+    onSurface = BlueSkyColors.OnSurface,
+    surfaceVariant = BlueSkyColors.SurfaceVariant,
+    onSurfaceVariant = BlueSkyColors.OnSurfaceVariant,
+    error = BlueSkyColors.Error,
+    onError = BlueSkyColors.OnError,
+    outline = BlueSkyColors.Outline
+)
+
+/**
  * App typography
  */
 private val AppTypography = Typography(
@@ -142,6 +169,7 @@ fun getColorScheme(theme: AppTheme): ColorScheme {
         AppTheme.LIGHT -> LightColorScheme
         AppTheme.OCEAN -> OceanColorScheme
         AppTheme.ROSEWOOD -> RosewoodColorScheme
+        AppTheme.BLUE_SKY -> BlueSkyColorScheme
     }
 }
 

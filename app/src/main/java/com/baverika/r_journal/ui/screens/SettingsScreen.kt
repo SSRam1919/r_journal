@@ -20,9 +20,14 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import java.util.Calendar
+import android.app.DatePickerDialog
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -37,6 +42,7 @@ import com.baverika.r_journal.ui.theme.LightColors
 import com.baverika.r_journal.ui.theme.MidnightColors
 import com.baverika.r_journal.ui.theme.OceanColors
 import com.baverika.r_journal.ui.theme.RosewoodColors
+import com.baverika.r_journal.ui.theme.BlueSkyColors
 import com.baverika.r_journal.utils.PasswordExportUtils
 import com.baverika.r_journal.BuildConfig
 import kotlinx.coroutines.launch
@@ -54,8 +60,32 @@ fun SettingsScreen(
 
     var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
     var currentTheme by remember { mutableStateOf(settingsRepo.appTheme) }
+    var birthDay by remember { mutableIntStateOf(settingsRepo.birthDay) }
+    var birthMonth by remember { mutableIntStateOf(settingsRepo.birthMonth) }
+    var birthYear by remember { mutableIntStateOf(settingsRepo.birthYear) }
+    
     var isExporting by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
+
+    // Date Picker Logic
+    val calendar = Calendar.getInstance()
+    calendar.set(birthYear, birthMonth - 1, birthDay)
+    
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            birthYear = year
+            birthMonth = month + 1
+            birthDay = dayOfMonth
+            
+            settingsRepo.birthYear = year
+            settingsRepo.birthMonth = month + 1
+            settingsRepo.birthDay = dayOfMonth
+        },
+        birthYear,
+        birthMonth - 1,
+        birthDay
+    )
 
     val passwords by passwordRepo.allPasswords.collectAsState(initial = emptyList())
 
@@ -89,8 +119,11 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
+                .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+
+
             // --- Appearance Section ---
             Text(
                 text = "Appearance",
@@ -155,6 +188,18 @@ fun SettingsScreen(
                         currentTheme = AppTheme.ROSEWOOD
                         settingsRepo.appTheme = AppTheme.ROSEWOOD
                         onThemeChanged(AppTheme.ROSEWOOD)
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                ThemeOption(
+                    name = "Blue Sky",
+                    backgroundColor = BlueSkyColors.Background,
+                    primaryColor = BlueSkyColors.Primary,
+                    isSelected = currentTheme == AppTheme.BLUE_SKY,
+                    onClick = {
+                        currentTheme = AppTheme.BLUE_SKY
+                        settingsRepo.appTheme = AppTheme.BLUE_SKY
+                        onThemeChanged(AppTheme.BLUE_SKY)
                     },
                     modifier = Modifier.weight(1f)
                 )
@@ -271,6 +316,23 @@ fun SettingsScreen(
                     )
                 }
             }
+
+            Divider(modifier = Modifier.padding(vertical = 20.dp))
+
+            // --- Personalization Section ---
+            Text(
+                text = "Personalization",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            SettingsItem(
+                icon = Icons.Default.Cake,
+                title = "Birthday",
+                subtitle = "$birthDay/${birthMonth}/$birthYear",
+                onClick = { datePickerDialog.show() }
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 

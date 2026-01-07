@@ -95,7 +95,12 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.ui.draw.alpha
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.paint
+import androidx.compose.ui.draw.blur
 
 import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.data.local.entity.EventType
@@ -105,6 +110,8 @@ import com.baverika.r_journal.utils.VoiceRecorderHelper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -337,14 +344,15 @@ fun ChatBubble(
 
                 // text
                 if (message.content.isNotBlank()) {
+                    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
                     Surface(
                         shape = MaterialTheme.shapes.medium,
-                        color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if (isBlueSky) Color.Black.copy(alpha = 0.6f) else if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
                         M3Text(
                             text = message.content,
-                            color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            color = if (isBlueSky) Color.White else if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -511,6 +519,18 @@ fun ChatInputScreen(
             recordingDuration = voiceRecorder.currentDuration
         }
     }
+
+    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isBlueSky) {
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.bg_journal_archive),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().blur(6.dp),
+                contentScale = ContentScale.Crop
+            )
+        }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -1126,7 +1146,10 @@ fun ChatInputScreen(
             }
         )
     }
+    }
 }
+
+// helper
 
 // helper
 fun createTempImageFile(context: android.content.Context): File {

@@ -130,10 +130,43 @@ object RosewoodColors {
     val Outline = Color(0xFF5C4F4C)
 }
 
+// ============================================
+// THEME: BLUE SKY (Celestial)
+// Deep space blue with gold accents
+// ============================================
+object BlueSkyColors {
+    val Primary = Color(0xFFFFD700) // Gold
+    val OnPrimary = Color(0xFF3E1C00)
+    val PrimaryContainer = Color(0xFF5C4000)
+    val OnPrimaryContainer = Color(0xFFFFE0A0)
+
+    val Secondary = Color(0xFFB0C6FF)
+    val OnSecondary = Color(0xFF002D6C)
+    val SecondaryContainer = Color(0xFF19438F)
+    val OnSecondaryContainer = Color(0xFFD9E2FF)
+
+    val Tertiary = Color(0xFFC4C0FF)
+    val OnTertiary = Color(0xFF2B285E)
+    val TertiaryContainer = Color(0xFF434077)
+    val OnTertiaryContainer = Color(0xFFE2DFFF)
+
+    val Background = Color(0xFF051025) // Deep Space Blue
+    val OnBackground = Color(0xFFE2E2E6)
+    val Surface = Color(0xFF0B1A35) // Slightly lighter blue
+    val OnSurface = Color(0xFFE2E2E6)
+    val SurfaceVariant = Color(0xFF152545)
+    val OnSurfaceVariant = Color(0xFFC4C6D0)
+
+    val Error = Color(0xFFFFB4AB)
+    val OnError = Color(0xFF690005)
+    val Outline = Color(0xFF8E9099)
+}
+
 // Theme enum for easy reference
 enum class AppTheme(val displayName: String) {
     MIDNIGHT("Midnight"),
     LIGHT("Light"),
     OCEAN("Ocean"),
-    ROSEWOOD("Rosewood")
+    ROSEWOOD("Rosewood"),
+    BLUE_SKY("Blue Sky")
 }

@@ -73,6 +73,7 @@ fun getEmptyCellColor(): Color {
         AppTheme.MIDNIGHT -> Color(0xFF161B22)
         AppTheme.OCEAN -> Color(0xFF0D2137)
         AppTheme.ROSEWOOD -> Color(0xFF2D1F1D)
+        AppTheme.BLUE_SKY -> Color(0xFF081428)
     }
 }
 
